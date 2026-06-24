@@ -446,6 +446,7 @@ GameObject:
   - component: {fileID: 1885919807}
   - component: {fileID: 1885919811}
   - component: {fileID: 1885919812}
+  - component: {fileID: 1885919813}
   m_Layer: 0
   m_Name: Terrain
   m_TagString: Untagged
@@ -469,7 +470,7 @@ MonoBehaviour:
   generateHeightMap: 1
   generateSlopeMap: 1
   generateAspectMap: 1
-  generateAspectColorMap: 1
+  generateAspectColorMap: 0
 --- !u!154 &1885919808
 TerrainCollider:
   m_ObjectHideFlags: 0
@@ -559,11 +560,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: '::'
   terrain: {fileID: 1885919809}
   generateDailySolarExposure: 1
+  generateAnnualSolarExposure: 0
   latitude: 45
-  dayOfYear: 100
+  dayOfYear: 180
   hourStart: 5
   hourEnd: 21
   hourStep: 2
+  annualSamples: 3
   maxDistanceSamples: 32
 --- !u!114 &1885919812
 MonoBehaviour:
@@ -600,7 +603,30 @@ MonoBehaviour:
     generateAspectMap: 0
     generateAspectColorMap: 0
     generateDailySolarExposure: 0
+    generateAnnualSolarExposure: 0
     generationDate: 
+--- !u!114 &1885919813
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1885919806}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d3f29543ccb99334eaf4db94924081d9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::map_analysis
+  terrain: {fileID: 1885919809}
+  solarExposureGenerator: {fileID: 1885919811}
+  generateMoistureMap: 1
+  heightMapFileName: heightmap.exr
+  slopeMapFileName: slopemap.exr
+  annualSolarExposureMapFileName: AnnualSolarExposure_3.exr
+  annualSamples: 12
+  generateMoisturePreview: 1
+  moistureMapFileName: moistureMap
+  moisturePreviewFileName: MoisturePreview
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
