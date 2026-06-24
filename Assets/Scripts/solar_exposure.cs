@@ -7,6 +7,7 @@ public class DailySolarExposure : MonoBehaviour
 
     [Header("Maps To Generate")]
     public bool generateDailySolarExposure = true;
+    public bool generateAnnualSolarExposure = true;
 
     [Header("Location")]
     public float latitude = 45f;
@@ -17,14 +18,17 @@ public class DailySolarExposure : MonoBehaviour
     public int hourEnd = 21;
     public float hourStep = 1f;
 
+    [Header("Annual Sampling")]
+    public int annualSamples = 12;
+
     [Header("Raymarch")]
     public int maxDistanceSamples = 32;
 
     void Start()
     {
-        if (!generateDailySolarExposure)
+        if (!generateDailySolarExposure && !generateAnnualSolarExposure)
         {
-            Debug.Log("Daily solar exposure map generation is disabled.");
+            Debug.Log("Solar exposure map generation is disabled.");
             return;
         }
 
@@ -33,18 +37,66 @@ public class DailySolarExposure : MonoBehaviour
             terrain = Terrain.activeTerrain;
         }
 
+        if (terrain == null)
+        {
+            Debug.LogWarning("No terrain found for solar exposure generation.");
+            return;
+        }
+
         TerrainData data = terrain.terrainData;
 
         int res = data.heightmapResolution;
         float[,] heights = data.GetHeights(0, 0, res, res);
 
-        Texture2D exposureMap = new Texture2D(res, res, TextureFormat.RGBAFloat, false);
-
         float terrainWidth = data.size.x;
         float terrainHeight = data.size.y;
         float metersPerPixel = terrainWidth / res;
 
-        float maxPossibleLight = CalculateMaxPossibleLight();
+        Directory.CreateDirectory(Application.dataPath + "/maps");
+
+        if (generateDailySolarExposure)
+        {
+            Texture2D dailyExposureMap = GenerateSolarExposureMap(
+                dayOfYear,
+                heights,
+                terrainHeight,
+                metersPerPixel,
+                res
+            );
+
+            SaveExposureMap(dailyExposureMap, $"daily_{dayOfYear}_solar_exposure");
+
+            Debug.Log($"Solar exposure map for {dayOfYear} saved!");
+        }
+
+        if (generateAnnualSolarExposure)
+        {
+            int annualSampleCount = GetAnnualSampleCount();
+            Texture2D annualExposureMap = GenerateAnnualSolarExposureMap(
+                heights,
+                terrainHeight,
+                metersPerPixel,
+                res,
+                annualSampleCount
+            );
+
+            SaveExposureMap(annualExposureMap, $"AnnualSolarExposure_{annualSampleCount}");
+
+            Debug.Log($"Annual solar exposure map saved for {annualSampleCount} samples!");
+        }
+    }
+
+    Texture2D GenerateSolarExposureMap(
+        int targetDayOfYear,
+        float[,] heights,
+        float terrainHeight,
+        float metersPerPixel,
+        int res
+    )
+    {
+        Texture2D exposureMap = new Texture2D(res, res, TextureFormat.RGBAFloat, false);
+
+        float maxPossibleLight = CalculateMaxPossibleLight(targetDayOfYear);
 
         for (int y = 0; y < res; y++)
         {
@@ -53,6 +105,7 @@ public class DailySolarExposure : MonoBehaviour
                 float totalLight = CalculateExposureForPixel(
                     x,
                     y,
+                    targetDayOfYear,
                     heights,
                     terrainHeight,
                     metersPerPixel,
@@ -60,27 +113,98 @@ public class DailySolarExposure : MonoBehaviour
                 );
 
                 float normalized = maxPossibleLight > 0f ? totalLight / maxPossibleLight : 0f;
-                normalized = Mathf.Pow(Mathf.Clamp01(normalized), 0.25f);
+                normalized = NormalizeExposure(normalized);
 
                 exposureMap.SetPixel(x, y, new Color(normalized, normalized, normalized, 1f));
             }
         }
 
         exposureMap.Apply();
-
-        byte[] bytes = exposureMap.EncodeToEXR(Texture2D.EXRFlags.OutputAsFloat);
-        File.WriteAllBytes(Application.dataPath + "/maps/daily_solar_exposure.exr", bytes);
-
-        Debug.Log($"Solar exposure map saved! Max possible light: {maxPossibleLight}");
+        return exposureMap;
     }
 
-    float CalculateMaxPossibleLight()
+    Texture2D GenerateAnnualSolarExposureMap(
+        float[,] heights,
+        float terrainHeight,
+        float metersPerPixel,
+        int res,
+        int samples
+    )
+    {
+        int dayStep = Mathf.Max(1, Mathf.FloorToInt(365f / samples));
+        float[,] exposureTotals = new float[res, res];
+
+        for (int sample = 0; sample < samples; sample++)
+        {
+            int sampledDay = Mathf.Clamp(1 + sample * dayStep, 1, 365);
+            float maxPossibleLight = CalculateMaxPossibleLight(sampledDay);
+
+            for (int y = 0; y < res; y++)
+            {
+                for (int x = 0; x < res; x++)
+                {
+                    float totalLight = CalculateExposureForPixel(
+                        x,
+                        y,
+                        sampledDay,
+                        heights,
+                        terrainHeight,
+                        metersPerPixel,
+                        res
+                    );
+
+                    float normalized = maxPossibleLight > 0f ? totalLight / maxPossibleLight : 0f;
+                    normalized = NormalizeExposure(normalized);
+                    exposureTotals[y, x] += normalized;
+                }
+            }
+        }
+
+        Texture2D annualExposureMap = new Texture2D(res, res, TextureFormat.RGBAFloat, false);
+
+        for (int y = 0; y < res; y++)
+        {
+            for (int x = 0; x < res; x++)
+            {
+                float averaged = exposureTotals[y, x] / samples;
+                annualExposureMap.SetPixel(x, y, new Color(averaged, averaged, averaged, 1f));
+            }
+        }
+
+        annualExposureMap.Apply();
+        return annualExposureMap;
+    }
+
+    int GetAnnualSampleCount()
+    {
+        int samples = Mathf.Clamp(annualSamples, 1, 365);
+
+        if (samples != annualSamples)
+        {
+            Debug.LogWarning($"annualSamples should be between 1 and 365. Using {samples}.");
+        }
+
+        return samples;
+    }
+
+    float NormalizeExposure(float exposure)
+    {
+        return Mathf.Pow(Mathf.Clamp01(exposure), 0.25f);
+    }
+
+    void SaveExposureMap(Texture2D exposureMap, string fileName)
+    {
+        byte[] bytes = exposureMap.EncodeToEXR(Texture2D.EXRFlags.OutputAsFloat);
+        File.WriteAllBytes(Application.dataPath + $"/maps/{fileName}.exr", bytes);
+    }
+
+    float CalculateMaxPossibleLight(int targetDayOfYear)
     {
         float maxPossibleLight = 0f;
 
         for (float hour = hourStart; hour <= hourEnd; hour += hourStep)
         {
-            GetSunPosition(latitude, dayOfYear, hour, out float azimuthDeg, out float elevationDeg);
+            GetSunPosition(latitude, targetDayOfYear, hour, out float azimuthDeg, out float elevationDeg);
 
             if (elevationDeg <= 0f)
                 continue;
@@ -94,6 +218,7 @@ public class DailySolarExposure : MonoBehaviour
     float CalculateExposureForPixel(
         int x,
         int y,
+        int targetDayOfYear,
         float[,] heights,
         float terrainHeight,
         float metersPerPixel,
@@ -105,7 +230,7 @@ public class DailySolarExposure : MonoBehaviour
 
         for (float hour = hourStart; hour <= hourEnd; hour += hourStep)
         {
-            GetSunPosition(latitude, dayOfYear, hour, out float azimuthDeg, out float elevationDeg);
+            GetSunPosition(latitude, targetDayOfYear, hour, out float azimuthDeg, out float elevationDeg);
 
             if (elevationDeg <= 0f)
                 continue;
