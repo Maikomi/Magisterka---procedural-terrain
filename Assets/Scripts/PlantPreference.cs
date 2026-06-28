@@ -6,6 +6,7 @@ public class PlantPreference
 {
     public string plantName;
     public bool generateSuitabilityMap = true;
+    public Color plantColor = Color.white;
 
     [Range(0f, 1f)] public float heightPreference;
     [Range(0f, 1f)] public float slopePreference;
@@ -21,7 +22,8 @@ public class PlantPreference
         float heightPreference,
         float slopePreference,
         float exposurePreference,
-        float moisturePreference
+        float moisturePreference,
+        Color plantColor = default
     )
     {
         this.plantName = plantName;
@@ -29,6 +31,7 @@ public class PlantPreference
         this.slopePreference = slopePreference;
         this.exposurePreference = exposurePreference;
         this.moisturePreference = moisturePreference;
+        this.plantColor = plantColor != default ? plantColor : Color.white;
     }
 
     public float CalculateSuitability(float height, float slope, float exposure, float moisture)

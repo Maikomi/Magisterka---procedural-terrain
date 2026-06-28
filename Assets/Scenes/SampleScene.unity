@@ -468,8 +468,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: '::'
   terrain: {fileID: 1885919809}
   generateHeightMap: 1
-  generateSlopeMap: 1
-  generateAspectMap: 1
+  generateSlopeMap: 0
+  generateAspectMap: 0
   generateAspectColorMap: 0
 --- !u!154 &1885919808
 TerrainCollider:
@@ -559,7 +559,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: '::'
   terrain: {fileID: 1885919809}
-  generateDailySolarExposure: 1
+  generateDailySolarExposure: 0
   generateAnnualSolarExposure: 0
   latitude: 45
   dayOfYear: 180
@@ -627,6 +627,26 @@ MonoBehaviour:
   generateMoisturePreview: 1
   moistureMapFileName: moistureMap
   moisturePreviewFileName: MoisturePreview
+  generatePlantSuitabilityPreviews: 1
+  plantPreferences:
+  - plantName: buk
+    generateSuitabilityMap: 1
+    heightPreference: 0.1
+    slopePreference: 0
+    exposurePreference: 0.5
+    moisturePreference: 0.6
+  - plantName: swierk
+    generateSuitabilityMap: 1
+    heightPreference: 0.7
+    slopePreference: 0.6
+    exposurePreference: 0.5
+    moisturePreference: 0.7
+  - plantName: trawa
+    generateSuitabilityMap: 1
+    heightPreference: 0.5
+    slopePreference: 0.2
+    exposurePreference: 0.6
+    moisturePreference: 0.4
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

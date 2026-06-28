@@ -5,6 +5,21 @@ using System.IO;
 public class metadata_json : MonoBehaviour
 {
     [Serializable]
+    public class PlantSpeciesLegend
+    {
+        public string plantName;
+        public string colorHex;
+        public int colorIndex;
+
+        public PlantSpeciesLegend(string plantName, string colorHex, int colorIndex)
+        {
+            this.plantName = plantName;
+            this.colorHex = colorHex;
+            this.colorIndex = colorIndex;
+        }
+    }
+
+    [Serializable]
     public class TerrainAnalysisMetadata
     {
         public string terrainName;
@@ -32,6 +47,9 @@ public class metadata_json : MonoBehaviour
         public bool generateAspectColorMap;
         public bool generateDailySolarExposure;
         public bool generateAnnualSolarExposure;
+        public bool generateDominantSpeciesMap;
+
+        public PlantSpeciesLegend[] plantSpeciesLegend;
 
         public string generationDate;
     }
@@ -39,6 +57,7 @@ public class metadata_json : MonoBehaviour
     public Terrain terrain;
     public SaveTerrainMapsPNG terrainMapGenerator;
     public DailySolarExposure solarExposureGenerator;
+    public map_analysis mapAnalysisGenerator;
 
     public TerrainAnalysisMetadata meta = new TerrainAnalysisMetadata();
 
@@ -77,6 +96,11 @@ public class metadata_json : MonoBehaviour
             solarExposureGenerator = FindAnyObjectByType<DailySolarExposure>();
         }
 
+        if (mapAnalysisGenerator == null)
+        {
+            mapAnalysisGenerator = FindAnyObjectByType<map_analysis>();
+        }
+
         if (terrain != null)
         {
             TerrainData data = terrain.terrainData;
@@ -113,6 +137,25 @@ public class metadata_json : MonoBehaviour
             meta.generateSlopeMap = terrainMapGenerator.generateSlopeMap;
             meta.generateAspectMap = terrainMapGenerator.generateAspectMap;
             meta.generateAspectColorMap = terrainMapGenerator.generateAspectColorMap;
+        }
+
+        if (mapAnalysisGenerator != null)
+        {
+            meta.generateDominantSpeciesMap = mapAnalysisGenerator.generateDominantSpeciesMap;
+
+            if (mapAnalysisGenerator.plantPreferences != null)
+            {
+                meta.plantSpeciesLegend = new PlantSpeciesLegend[mapAnalysisGenerator.plantPreferences.Length];
+                for (int i = 0; i < mapAnalysisGenerator.plantPreferences.Length; i++)
+                {
+                    PlantPreference plant = mapAnalysisGenerator.plantPreferences[i];
+                    if (plant != null)
+                    {
+                        string colorHex = ColorUtility.ToHtmlStringRGB(plant.plantColor);
+                        meta.plantSpeciesLegend[i] = new PlantSpeciesLegend(plant.plantName, colorHex, i);
+                    }
+                }
+            }
         }
 
         meta.generationDate = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");

@@ -26,10 +26,13 @@ public class map_analysis : MonoBehaviour
     public bool generatePlantSuitabilityPreviews = true;
     public PlantPreference[] plantPreferences =
     {
-        new PlantPreference("buk", 0.1f, 0.0f, 0.5f, 0.6f),
-        new PlantPreference("swierk", 0.7f, 0.6f, 0.5f, 0.7f),
-        new PlantPreference("trawa", 0.5f, 0.2f, 0.6f, 0.4f)
+        new PlantPreference("buk", 0.1f, 0.0f, 0.5f, 0.6f, new Color(0.2f, 0.8f, 0.2f, 1f)),
+        new PlantPreference("swierk", 0.7f, 0.6f, 0.5f, 0.7f, new Color(0.2f, 0.4f, 0.8f, 1f)),
+        new PlantPreference("trawa", 0.5f, 0.2f, 0.6f, 0.4f, new Color(1f, 0.9f, 0.2f, 1f))
     };
+
+    [Header("Dominant Species Map")]
+    public bool generateDominantSpeciesMap = true;
 
     IEnumerator Start()
     {
@@ -68,6 +71,14 @@ public class map_analysis : MonoBehaviour
         }
 
         GeneratePlantSuitabilityMaps(inputData);
+
+        if (generateDominantSpeciesMap)
+        {
+            Texture2D dominantSpeciesMap = GenerateDominantSpeciesMap(inputData);
+            SaveExr(dominantSpeciesMap, "DominantSpeciesMap");
+            SaveDominantSpeciesMapPng(dominantSpeciesMap, "DominantSpeciesMap", inputData);
+            Debug.Log("Dominant species map saved!");
+        }
     }
 
     MapInputData PrepareInputData()
@@ -189,6 +200,115 @@ public class map_analysis : MonoBehaviour
         return suitabilityMap;
     }
 
+    Texture2D GenerateDominantSpeciesMap(MapInputData inputData)
+    {
+        if (plantPreferences == null || plantPreferences.Length == 0)
+        {
+            Debug.LogWarning("No plant preferences available for dominant species map generation.");
+            return CreateFloatMap(inputData.resolution);
+        }
+
+        Texture2D dominantSpeciesMap = CreateFloatMap(inputData.resolution);
+
+        ForEachPixel(inputData.resolution, (x, y, normX, normY) =>
+        {
+            float height = inputData.GetHeight(x, y, normX, normY);
+            float slope = inputData.GetSlope(normX, normY);
+            float exposure = inputData.GetExposure(normX, normY);
+            float moisture = inputData.GetMoisture(x, y, normX, normY);
+
+            // Calculate suitability for each plant
+            float[] suitabilities = new float[plantPreferences.Length];
+            for (int i = 0; i < plantPreferences.Length; i++)
+            {
+                if (plantPreferences[i] != null)
+                {
+                    suitabilities[i] = plantPreferences[i].CalculateSuitability(height, slope, exposure, moisture);
+                }
+                else
+                {
+                    suitabilities[i] = 0f;
+                }
+            }
+
+            // Find dominant species (highest suitability)
+            int dominantIndex = 0;
+            float maxSuitability = suitabilities[0];
+
+            for (int i = 1; i < suitabilities.Length; i++)
+            {
+                if (suitabilities[i] > maxSuitability)
+                {
+                    maxSuitability = suitabilities[i];
+                    dominantIndex = i;
+                }
+            }
+
+            // Encode species index as grayscale value (0-1 range)
+            float speciesValue = plantPreferences.Length > 1 ? (float)dominantIndex / (plantPreferences.Length - 1) : 0f;
+            SetGrayscalePixel(dominantSpeciesMap, x, y, speciesValue);
+        });
+
+        dominantSpeciesMap.Apply();
+        return dominantSpeciesMap;
+    }
+
+    Texture2D GenerateDominantSpeciesMapColored(MapInputData inputData)
+    {
+        if (plantPreferences == null || plantPreferences.Length == 0)
+        {
+            Debug.LogWarning("No plant preferences available for dominant species map generation.");
+            return CreateFloatMap(inputData.resolution);
+        }
+
+        Texture2D coloredMap = new Texture2D(inputData.resolution, inputData.resolution, TextureFormat.RGBA32, false);
+
+        ForEachPixel(inputData.resolution, (x, y, normX, normY) =>
+        {
+            float height = inputData.GetHeight(x, y, normX, normY);
+            float slope = inputData.GetSlope(normX, normY);
+            float exposure = inputData.GetExposure(normX, normY);
+            float moisture = inputData.GetMoisture(x, y, normX, normY);
+
+            // Calculate suitability for each plant
+            float[] suitabilities = new float[plantPreferences.Length];
+            for (int i = 0; i < plantPreferences.Length; i++)
+            {
+                if (plantPreferences[i] != null)
+                {
+                    suitabilities[i] = plantPreferences[i].CalculateSuitability(height, slope, exposure, moisture);
+                }
+                else
+                {
+                    suitabilities[i] = 0f;
+                }
+            }
+
+            // Find dominant species (highest suitability)
+            int dominantIndex = 0;
+            float maxSuitability = suitabilities[0];
+
+            for (int i = 1; i < suitabilities.Length; i++)
+            {
+                if (suitabilities[i] > maxSuitability)
+                {
+                    maxSuitability = suitabilities[i];
+                    dominantIndex = i;
+                }
+            }
+
+            // Get color for dominant species
+            Color plantColor = plantPreferences[dominantIndex] != null 
+                ? plantPreferences[dominantIndex].plantColor 
+                : Color.white;
+
+            coloredMap.SetPixel(x, y, plantColor);
+        });
+
+        coloredMap.Apply();
+        return coloredMap;
+    }
+
     float CalculateMoisture(float height, float slope, float exposure)
     {
         return Mathf.Clamp01(
@@ -219,6 +339,11 @@ public class map_analysis : MonoBehaviour
     bool HasAnyMapToGenerate()
     {
         if (generateMoistureMap)
+        {
+            return true;
+        }
+
+        if (generateDominantSpeciesMap)
         {
             return true;
         }
@@ -316,6 +441,72 @@ public class map_analysis : MonoBehaviour
             Path.Combine(GetMapsPath(), $"{fileName}.png"),
             map.EncodeToPNG()
         );
+    }
+
+    void SaveDominantSpeciesMapPng(Texture2D grayscaleMap, string fileName, MapInputData inputData)
+    {
+        // Generate colored map
+        Texture2D coloredMap = GenerateDominantSpeciesMapColored(inputData);
+
+        // Save colored PNG
+        File.WriteAllBytes(
+            Path.Combine(GetMapsPath(), $"{fileName}_colored.png"),
+            coloredMap.EncodeToPNG()
+        );
+
+        // Generate and save legend image
+        Texture2D legendTexture = GenerateLegendTexture();
+        File.WriteAllBytes(
+            Path.Combine(GetMapsPath(), $"{fileName}_legend.png"),
+            legendTexture.EncodeToPNG()
+        );
+
+        Destroy(coloredMap);
+        Destroy(legendTexture);
+    }
+
+    Texture2D GenerateLegendTexture()
+    {
+        int legendWidth = 300;
+        int legendHeight = (plantPreferences.Length * 60) + 40;
+        Texture2D legend = new Texture2D(legendWidth, legendHeight, TextureFormat.RGBA32, false);
+
+        // Fill with white background
+        Color[] pixels = new Color[legendWidth * legendHeight];
+        for (int i = 0; i < pixels.Length; i++)
+        {
+            pixels[i] = Color.white;
+        }
+        legend.SetPixels(pixels);
+
+        // Add title and plant info
+        int yOffset = legendHeight - 40;
+
+        for (int i = 0; i < plantPreferences.Length; i++)
+        {
+            if (plantPreferences[i] == null)
+                continue;
+
+            // Draw colored rectangle
+            Color plantColor = plantPreferences[i].plantColor;
+            int rectX = 20;
+            int rectY = yOffset - 30;
+            int rectWidth = 40;
+            int rectHeight = 40;
+
+            for (int y = rectY; y < rectY + rectHeight && y < legendHeight; y++)
+            {
+                for (int x = rectX; x < rectX + rectWidth && x < legendWidth; x++)
+                {
+                    legend.SetPixel(x, y, plantColor);
+                }
+            }
+
+            yOffset -= 60;
+        }
+
+        legend.Apply();
+        return legend;
     }
 
     void SetGrayscalePixel(Texture2D map, int x, int y, float value)
