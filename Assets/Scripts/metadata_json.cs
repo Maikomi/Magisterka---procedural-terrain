@@ -10,12 +10,14 @@ public class metadata_json : MonoBehaviour
         public string plantName;
         public string colorHex;
         public int colorIndex;
+        public float seedRadius;
 
-        public PlantSpeciesLegend(string plantName, string colorHex, int colorIndex)
+        public PlantSpeciesLegend(string plantName, string colorHex, int colorIndex, float seedRadius)
         {
             this.plantName = plantName;
             this.colorHex = colorHex;
             this.colorIndex = colorIndex;
+            this.seedRadius = seedRadius;
         }
     }
 
@@ -48,6 +50,11 @@ public class metadata_json : MonoBehaviour
         public bool generateDailySolarExposure;
         public bool generateAnnualSolarExposure;
         public bool generateDominantSpeciesMap;
+        public bool generateSeedMap;
+
+        public float seedSuitabilityThreshold;
+        public int seedLocalMaximumWindowSize;
+        public float seedProbabilityPower;
 
         public PlantSpeciesLegend[] plantSpeciesLegend;
 
@@ -142,6 +149,10 @@ public class metadata_json : MonoBehaviour
         if (mapAnalysisGenerator != null)
         {
             meta.generateDominantSpeciesMap = mapAnalysisGenerator.generateDominantSpeciesMap;
+            meta.generateSeedMap = mapAnalysisGenerator.generateSeedMap;
+            meta.seedSuitabilityThreshold = mapAnalysisGenerator.seedSuitabilityThreshold;
+            meta.seedLocalMaximumWindowSize = mapAnalysisGenerator.seedLocalMaximumWindowSize;
+            meta.seedProbabilityPower = mapAnalysisGenerator.seedProbabilityPower;
 
             if (mapAnalysisGenerator.plantPreferences != null)
             {
@@ -152,7 +163,7 @@ public class metadata_json : MonoBehaviour
                     if (plant != null)
                     {
                         string colorHex = ColorUtility.ToHtmlStringRGB(plant.plantColor);
-                        meta.plantSpeciesLegend[i] = new PlantSpeciesLegend(plant.plantName, colorHex, i);
+                        meta.plantSpeciesLegend[i] = new PlantSpeciesLegend(plant.plantName, colorHex, i, plant.seedRadius);
                     }
                 }
             }

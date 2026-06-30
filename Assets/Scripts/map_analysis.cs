@@ -1,5 +1,6 @@
 using UnityEngine;
 using System.Collections;
+using System.Collections.Generic;
 using System.IO;
 using System;
 
@@ -26,13 +27,22 @@ public class map_analysis : MonoBehaviour
     public bool generatePlantSuitabilityPreviews = true;
     public PlantPreference[] plantPreferences =
     {
-        new PlantPreference("buk", 0.1f, 0.0f, 0.5f, 0.6f, new Color(0.2f, 0.8f, 0.2f, 1f)),
-        new PlantPreference("swierk", 0.7f, 0.6f, 0.5f, 0.7f, new Color(0.2f, 0.4f, 0.8f, 1f)),
-        new PlantPreference("trawa", 0.5f, 0.2f, 0.6f, 0.4f, new Color(1f, 0.9f, 0.2f, 1f))
+        new PlantPreference("buk", 0.1f, 0.0f, 0.5f, 0.6f, new Color(0.2f, 0.8f, 0.2f, 1f), 7f),
+        new PlantPreference("swierk", 0.7f, 0.6f, 0.5f, 0.7f, new Color(0.2f, 0.4f, 0.8f, 1f), 5f),
+        new PlantPreference("trawa", 0.5f, 0.2f, 0.6f, 0.4f, new Color(1f, 0.9f, 0.2f, 1f), 1f)
     };
 
     [Header("Dominant Species Map")]
     public bool generateDominantSpeciesMap = true;
+
+    [Header("Seed Map")]
+    public bool generateSeedMap = true;
+    public string seedMapFileName = "SeedMap";
+    [Range(0f, 1f)] public float seedSuitabilityThreshold = 0.65f;
+    public int seedLocalMaximumWindowSize = 10;
+    public float seedProbabilityPower = 3f;
+    static readonly System.Random SeedRandom = new System.Random();
+    readonly List<Seed> lastGeneratedSeeds = new List<Seed>();
 
     IEnumerator Start()
     {
@@ -78,6 +88,14 @@ public class map_analysis : MonoBehaviour
             SaveExr(dominantSpeciesMap, "DominantSpeciesMap");
             SaveDominantSpeciesMapPng(dominantSpeciesMap, "DominantSpeciesMap", inputData);
             Debug.Log("Dominant species map saved!");
+        }
+
+        if (generateSeedMap)
+        {
+            Texture2D seedMap = GenerateSeedMap(inputData);
+            SaveExr(seedMap, seedMapFileName);
+            SaveSeedMapPng(seedMap, seedMapFileName, inputData);
+            Debug.Log("Seed map saved!");
         }
     }
 
@@ -309,6 +327,245 @@ public class map_analysis : MonoBehaviour
         return coloredMap;
     }
 
+    Texture2D GenerateSeedMap(MapInputData inputData)
+    {
+        if (plantPreferences == null || plantPreferences.Length == 0)
+        {
+            Debug.LogWarning("No plant preferences available for seed map generation.");
+            return CreateColorMap(inputData.resolution);
+        }
+
+        List<Seed> candidates = new List<Seed>();
+        lastGeneratedSeeds.Clear();
+
+        ForEachPixel(inputData.resolution, (x, y, normX, normY) =>
+        {
+            DominantSpeciesInfo dominantInfo = GetDominantSpeciesInfo(inputData, x, y, normX, normY);
+
+            if (dominantInfo.species == null || dominantInfo.suitability <= seedSuitabilityThreshold)
+            {
+                return;
+            }
+
+            if (!IsLocalMaximum(inputData, x, y, dominantInfo.suitability))
+            {
+                return;
+            }
+
+            float probability = Mathf.Pow(dominantInfo.suitability, seedProbabilityPower);
+            if ((float)SeedRandom.NextDouble() < probability)
+            {
+                candidates.Add(new Seed(dominantInfo.species, new Vector2Int(x, y), dominantInfo.suitability));
+            }
+        });
+
+        candidates.Sort((left, right) => right.suitability.CompareTo(left.suitability));
+
+        Texture2D seedMap = CreateColorMap(inputData.resolution);
+        bool[,] blockedPixels = new bool[inputData.resolution, inputData.resolution];
+
+        for (int i = 0; i < candidates.Count; i++)
+        {
+            Seed seed = candidates[i];
+
+            if (IsSeedBlocked(blockedPixels, seed.pixel, seed.species.seedRadius, inputData))
+            {
+                continue;
+            }
+
+            seedMap.SetPixel(seed.pixel.x, seed.pixel.y, seed.species.color);
+            lastGeneratedSeeds.Add(seed);
+            BlockSeedArea(blockedPixels, seed.pixel, seed.species.seedRadius, inputData);
+        }
+
+        seedMap.Apply();
+        return seedMap;
+    }
+
+    Texture2D CreateColorMap(int resolution)
+    {
+        return new Texture2D(resolution, resolution, TextureFormat.RGBAFloat, false);
+    }
+
+    DominantSpeciesInfo GetDominantSpeciesInfo(MapInputData inputData, int x, int y, float normX, float normY)
+    {
+        if (plantPreferences == null || plantPreferences.Length == 0)
+        {
+            return DominantSpeciesInfo.Empty;
+        }
+
+        int dominantIndex = -1;
+        float maxSuitability = float.MinValue;
+
+        for (int i = 0; i < plantPreferences.Length; i++)
+        {
+            PlantPreference plant = plantPreferences[i];
+            if (plant == null)
+            {
+                continue;
+            }
+
+            float suitability = plant.CalculateSuitability(
+                inputData.GetHeight(x, y, normX, normY),
+                inputData.GetSlope(normX, normY),
+                inputData.GetExposure(normX, normY),
+                inputData.GetMoisture(x, y, normX, normY)
+            );
+
+            if (suitability > maxSuitability)
+            {
+                maxSuitability = suitability;
+                dominantIndex = i;
+            }
+        }
+
+        if (dominantIndex < 0)
+        {
+            return DominantSpeciesInfo.Empty;
+        }
+
+        PlantPreference dominantPlant = plantPreferences[dominantIndex];
+        Species species = new Species(
+            dominantPlant.plantName,
+            dominantPlant.plantColor,
+            dominantPlant.seedRadius,
+            dominantIndex
+        );
+
+        return new DominantSpeciesInfo(species, maxSuitability);
+    }
+
+    bool IsLocalMaximum(MapInputData inputData, int x, int y, float suitability)
+    {
+        int windowRadius = Mathf.Max(1, seedLocalMaximumWindowSize / 2);
+
+        for (int offsetY = -windowRadius; offsetY <= windowRadius; offsetY++)
+        {
+            int neighborY = y + offsetY;
+
+            if (neighborY < 0 || neighborY >= inputData.resolution)
+            {
+                continue;
+            }
+
+            for (int offsetX = -windowRadius; offsetX <= windowRadius; offsetX++)
+            {
+                int neighborX = x + offsetX;
+
+                if (offsetX == 0 && offsetY == 0)
+                {
+                    continue;
+                }
+
+                if (neighborX < 0 || neighborX >= inputData.resolution)
+                {
+                    continue;
+                }
+
+                float normX = inputData.resolution > 1 ? (float)neighborX / (inputData.resolution - 1) : 0f;
+                float normY = inputData.resolution > 1 ? (float)neighborY / (inputData.resolution - 1) : 0f;
+                DominantSpeciesInfo neighborInfo = GetDominantSpeciesInfo(inputData, neighborX, neighborY, normX, normY);
+
+                if (neighborInfo.suitability >= suitability)
+                {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
+    bool IsSeedBlocked(bool[,] blockedPixels, Vector2Int pixel, float seedRadiusMeters, MapInputData inputData)
+    {
+        int pixelRadius = GetSeedRadiusInPixels(seedRadiusMeters, inputData);
+        int minX = Mathf.Max(0, pixel.x - pixelRadius);
+        int maxX = Mathf.Min(inputData.resolution - 1, pixel.x + pixelRadius);
+        int minY = Mathf.Max(0, pixel.y - pixelRadius);
+        int maxY = Mathf.Min(inputData.resolution - 1, pixel.y + pixelRadius);
+        int radiusSquared = pixelRadius * pixelRadius;
+
+        for (int y = minY; y <= maxY; y++)
+        {
+            for (int x = minX; x <= maxX; x++)
+            {
+                int dx = x - pixel.x;
+                int dy = y - pixel.y;
+
+                if (dx * dx + dy * dy > radiusSquared)
+                {
+                    continue;
+                }
+
+                if (blockedPixels[x, y])
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    void BlockSeedArea(bool[,] blockedPixels, Vector2Int pixel, float seedRadiusMeters, MapInputData inputData)
+    {
+        int pixelRadius = GetSeedRadiusInPixels(seedRadiusMeters, inputData);
+        int minX = Mathf.Max(0, pixel.x - pixelRadius);
+        int maxX = Mathf.Min(inputData.resolution - 1, pixel.x + pixelRadius);
+        int minY = Mathf.Max(0, pixel.y - pixelRadius);
+        int maxY = Mathf.Min(inputData.resolution - 1, pixel.y + pixelRadius);
+        int radiusSquared = pixelRadius * pixelRadius;
+
+        for (int y = minY; y <= maxY; y++)
+        {
+            for (int x = minX; x <= maxX; x++)
+            {
+                int dx = x - pixel.x;
+                int dy = y - pixel.y;
+
+                if (dx * dx + dy * dy <= radiusSquared)
+                {
+                    blockedPixels[x, y] = true;
+                }
+            }
+        }
+    }
+
+    int GetSeedRadiusInPixels(float seedRadiusMeters, MapInputData inputData)
+    {
+        if (seedRadiusMeters <= 0f)
+        {
+            return 0;
+        }
+
+        float metersPerPixel = GetMetersPerPixel(inputData);
+        return Mathf.Max(1, Mathf.CeilToInt(seedRadiusMeters / metersPerPixel));
+    }
+
+    float GetMetersPerPixel(MapInputData inputData)
+    {
+        if (inputData.terrainData == null)
+        {
+            return 1f;
+        }
+
+        float resolutionDivisor = Mathf.Max(1, inputData.resolution - 1);
+        float metersPerPixelX = inputData.terrainData.size.x / resolutionDivisor;
+        float metersPerPixelZ = inputData.terrainData.size.z / resolutionDivisor;
+
+        return Mathf.Max(0.0001f, (metersPerPixelX + metersPerPixelZ) * 0.5f);
+    }
+
+    Species CreateSpecies(PlantPreference plant, int index)
+    {
+        if (plant == null)
+        {
+            return null;
+        }
+
+        return new Species(plant.plantName, plant.plantColor, plant.seedRadius, index);
+    }
+
     float CalculateMoisture(float height, float slope, float exposure)
     {
         return Mathf.Clamp01(
@@ -344,6 +601,11 @@ public class map_analysis : MonoBehaviour
         }
 
         if (generateDominantSpeciesMap)
+        {
+            return true;
+        }
+
+        if (generateSeedMap)
         {
             return true;
         }
@@ -443,70 +705,76 @@ public class map_analysis : MonoBehaviour
         );
     }
 
+    void SaveSeedMapPng(Texture2D seedMap, string fileName, MapInputData inputData)
+    {
+        Texture2D dominantSpeciesMap = GenerateDominantSpeciesMapColored(inputData);
+        Texture2D overlayMap = new Texture2D(dominantSpeciesMap.width, dominantSpeciesMap.height, TextureFormat.RGBA32, false);
+
+        overlayMap.SetPixels(dominantSpeciesMap.GetPixels());
+        DrawSeedDots(overlayMap);
+        overlayMap.Apply();
+
+        File.WriteAllBytes(
+            Path.Combine(GetMapsPath(), $"{fileName}.png"),
+            overlayMap.EncodeToPNG()
+        );
+
+        Destroy(dominantSpeciesMap);
+        Destroy(overlayMap);
+    }
+
     void SaveDominantSpeciesMapPng(Texture2D grayscaleMap, string fileName, MapInputData inputData)
     {
-        // Generate colored map
         Texture2D coloredMap = GenerateDominantSpeciesMapColored(inputData);
 
-        // Save colored PNG
         File.WriteAllBytes(
             Path.Combine(GetMapsPath(), $"{fileName}_colored.png"),
             coloredMap.EncodeToPNG()
         );
 
-        // Generate and save legend image
-        Texture2D legendTexture = GenerateLegendTexture();
-        File.WriteAllBytes(
-            Path.Combine(GetMapsPath(), $"{fileName}_legend.png"),
-            legendTexture.EncodeToPNG()
-        );
-
         Destroy(coloredMap);
-        Destroy(legendTexture);
     }
 
-    Texture2D GenerateLegendTexture()
+    void DrawSeedDots(Texture2D map)
     {
-        int legendWidth = 300;
-        int legendHeight = (plantPreferences.Length * 60) + 40;
-        Texture2D legend = new Texture2D(legendWidth, legendHeight, TextureFormat.RGBA32, false);
-
-        // Fill with white background
-        Color[] pixels = new Color[legendWidth * legendHeight];
-        for (int i = 0; i < pixels.Length; i++)
+        if (map == null || lastGeneratedSeeds.Count == 0)
         {
-            pixels[i] = Color.white;
+            return;
         }
-        legend.SetPixels(pixels);
 
-        // Add title and plant info
-        int yOffset = legendHeight - 40;
-
-        for (int i = 0; i < plantPreferences.Length; i++)
+        for (int i = 0; i < lastGeneratedSeeds.Count; i++)
         {
-            if (plantPreferences[i] == null)
-                continue;
+            Seed seed = lastGeneratedSeeds[i];
+            DrawFilledCircle(map, seed.pixel.x, seed.pixel.y, Mathf.Max(1, GetSeedDotRadius(seed.species.seedRadius)), Color.black);
+        }
+    }
 
-            // Draw colored rectangle
-            Color plantColor = plantPreferences[i].plantColor;
-            int rectX = 20;
-            int rectY = yOffset - 30;
-            int rectWidth = 40;
-            int rectHeight = 40;
+    void DrawFilledCircle(Texture2D map, int centerX, int centerY, int radius, Color color)
+    {
+        int minX = Mathf.Max(0, centerX - radius);
+        int maxX = Mathf.Min(map.width - 1, centerX + radius);
+        int minY = Mathf.Max(0, centerY - radius);
+        int maxY = Mathf.Min(map.height - 1, centerY + radius);
+        int radiusSquared = radius * radius;
 
-            for (int y = rectY; y < rectY + rectHeight && y < legendHeight; y++)
+        for (int y = minY; y <= maxY; y++)
+        {
+            for (int x = minX; x <= maxX; x++)
             {
-                for (int x = rectX; x < rectX + rectWidth && x < legendWidth; x++)
+                int dx = x - centerX;
+                int dy = y - centerY;
+
+                if (dx * dx + dy * dy <= radiusSquared)
                 {
-                    legend.SetPixel(x, y, plantColor);
+                    map.SetPixel(x, y, color);
                 }
             }
-
-            yOffset -= 60;
         }
+    }
 
-        legend.Apply();
-        return legend;
+    int GetSeedDotRadius(float seedRadiusMeters)
+    {
+        return Mathf.Clamp(Mathf.CeilToInt(seedRadiusMeters * 0.15f), 1, 4);
     }
 
     void SetGrayscalePixel(Texture2D map, int x, int y, float value)
@@ -542,6 +810,52 @@ public class map_analysis : MonoBehaviour
         }
 
         return fileName;
+    }
+
+    [Serializable]
+    class Species
+    {
+        public string plantName;
+        public Color color;
+        public float seedRadius;
+        public int index;
+
+        public Species(string plantName, Color color, float seedRadius, int index)
+        {
+            this.plantName = plantName;
+            this.color = color;
+            this.seedRadius = seedRadius;
+            this.index = index;
+        }
+    }
+
+    [Serializable]
+    class Seed
+    {
+        public Species species;
+        public Vector2Int pixel;
+        public float suitability;
+
+        public Seed(Species species, Vector2Int pixel, float suitability)
+        {
+            this.species = species;
+            this.pixel = pixel;
+            this.suitability = suitability;
+        }
+    }
+
+    struct DominantSpeciesInfo
+    {
+        public static readonly DominantSpeciesInfo Empty = new DominantSpeciesInfo(null, 0f);
+
+        public readonly Species species;
+        public readonly float suitability;
+
+        public DominantSpeciesInfo(Species species, float suitability)
+        {
+            this.species = species;
+            this.suitability = suitability;
+        }
     }
 
     delegate void PixelAction(int x, int y, float normX, float normY);
