@@ -432,6 +432,205 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1680423284
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1680423290}
+  - component: {fileID: 1680423289}
+  - component: {fileID: 1680423288}
+  - component: {fileID: 1680423287}
+  - component: {fileID: 1680423286}
+  - component: {fileID: 1680423285}
+  m_Layer: 0
+  m_Name: Manager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1680423285
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1680423284}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d3f29543ccb99334eaf4db94924081d9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::map_analysis
+--- !u!114 &1680423286
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1680423284}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 45f7cc892f6d26248bffea6fc1be1c86, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: '::'
+  terrain: {fileID: 1885919809}
+  solarExposureGenerator: {fileID: 0}
+  mapAnalysisGenerator: {fileID: 0}
+  meta:
+    terrainName: 
+    terrainResolution: 0
+    terrainWidth: 0
+    terrainLength: 0
+    terrainHeight: 0
+    latitude: 0
+    dayOfYear: 0
+    sampledDays: 0
+    annualSamples: 0
+    timeSamples: 0
+    hourStart: 0
+    hourEnd: 0
+    hourStep: 0
+    maxDistanceSamples: 0
+    generateHeightMap: 0
+    generateSlopeMap: 0
+    generateAspectMap: 0
+    generateAspectColorMap: 0
+    generateDailySolarExposure: 0
+    generateAnnualSolarExposure: 0
+    generateDominantSpeciesMap: 0
+    generateSeedMap: 0
+    seedSuitabilityThreshold: 0
+    seedLocalMaximumWindowSize: 0
+    seedProbabilityPower: 0
+    plantSpeciesLegend: []
+    generationDate: 
+--- !u!114 &1680423287
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1680423284}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7eaf1d779c5973b4ebaeae396f0fd05e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: '::'
+  terrain: {fileID: 1885919809}
+  generateDailySolarExposure: 0
+  generateAnnualSolarExposure: 0
+  latitude: 45
+  dayOfYear: 180
+  hourStart: 5
+  hourEnd: 21
+  hourStep: 2
+  annualSamples: 3
+  maxDistanceSamples: 32
+--- !u!114 &1680423288
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1680423284}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e38e3b00090efb84dbbcd0ad976131a6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::plant_analysis
+  seedMapFileName: SeedMap
+  seedSuitabilityThreshold: 0.65
+  seedLocalMaximumWindowSize: 10
+  seedProbabilityPower: 3
+--- !u!114 &1680423289
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1680423284}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 03af7615bab65f945bdf00591f94d2cb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::map_manager
+  terrain: {fileID: 1885919809}
+  mapAnalysis: {fileID: 0}
+  plantAnalysis: {fileID: 1680423288}
+  generateHeightMap: 1
+  generateSlopeMap: 1
+  generateAspectMap: 1
+  solarExposureGenerator: {fileID: 0}
+  generateMoistureMap: 1
+  generatePlantSuitabilityPreviews: 1
+  generateSeedMap: 1
+  seedMapFileName: SeedMap
+  generateDominantSpeciesMap: 1
+  dominantSpeciesMapFileName: DominantSpeciesMap
+  heightMapFileName: heightmap.exr
+  slopeMapFileName: slopemap.exr
+  aspectMapFileName: aspectmap.exr
+  annualSolarExposureMapFileName: 
+  annualSamples: 12
+  generateMoisturePreview: 1
+  moistureMapFileName: moistureMap
+  moisturePreviewFileName: MoisturePreview
+  species:
+  - plantName: buk
+    generateSuitabilityMap: 1
+    color: {r: 0.2, g: 0.8, b: 0.2, a: 1}
+    seedRadius: 7
+    growthRate: 1
+    maxRadius: 0
+    heightPreference: 0.1
+    slopePreference: 0
+    exposurePreference: 0.5
+    moisturePreference: 0.6
+    competetivness: 1
+    shadePreference: 1
+  - plantName: swierk
+    generateSuitabilityMap: 1
+    color: {r: 0.2, g: 0.4, b: 0.8, a: 1}
+    seedRadius: 5
+    growthRate: 1
+    maxRadius: 0
+    heightPreference: 0.7
+    slopePreference: 0.6
+    exposurePreference: 0.5
+    moisturePreference: 0.7
+    competetivness: 1
+    shadePreference: 1
+  - plantName: trawa
+    generateSuitabilityMap: 1
+    color: {r: 1, g: 0.9, b: 0.2, a: 1}
+    seedRadius: 1
+    growthRate: 1
+    maxRadius: 0
+    heightPreference: 0.5
+    slopePreference: 0.2
+    exposurePreference: 0.6
+    moisturePreference: 0.4
+    competetivness: 1
+    shadePreference: 1
+--- !u!4 &1680423290
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1680423284}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 276.05994, y: 82.74181, z: 70.16535}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1885919806
 GameObject:
   m_ObjectHideFlags: 0
@@ -443,10 +642,6 @@ GameObject:
   - component: {fileID: 1885919810}
   - component: {fileID: 1885919809}
   - component: {fileID: 1885919808}
-  - component: {fileID: 1885919807}
-  - component: {fileID: 1885919811}
-  - component: {fileID: 1885919812}
-  - component: {fileID: 1885919813}
   m_Layer: 0
   m_Name: Terrain
   m_TagString: Untagged
@@ -454,23 +649,6 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 2147483647
   m_IsActive: 1
---- !u!114 &1885919807
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1885919806}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: c52f0d65836ad8c4c841aa8d691ae8ae, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: '::'
-  terrain: {fileID: 1885919809}
-  generateHeightMap: 1
-  generateSlopeMap: 0
-  generateAspectMap: 0
-  generateAspectColorMap: 0
 --- !u!154 &1885919808
 TerrainCollider:
   m_ObjectHideFlags: 0
@@ -546,107 +724,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1885919811
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1885919806}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 7eaf1d779c5973b4ebaeae396f0fd05e, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: '::'
-  terrain: {fileID: 1885919809}
-  generateDailySolarExposure: 0
-  generateAnnualSolarExposure: 0
-  latitude: 45
-  dayOfYear: 180
-  hourStart: 5
-  hourEnd: 21
-  hourStep: 2
-  annualSamples: 3
-  maxDistanceSamples: 32
---- !u!114 &1885919812
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1885919806}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 45f7cc892f6d26248bffea6fc1be1c86, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: '::'
-  terrain: {fileID: 1885919809}
-  terrainMapGenerator: {fileID: 1885919807}
-  solarExposureGenerator: {fileID: 1885919811}
-  meta:
-    terrainName: 
-    terrainResolution: 0
-    terrainWidth: 0
-    terrainLength: 0
-    terrainHeight: 0
-    latitude: 0
-    dayOfYear: 0
-    sampledDays: 0
-    annualSamples: 0
-    timeSamples: 0
-    hourStart: 0
-    hourEnd: 0
-    hourStep: 0
-    maxDistanceSamples: 0
-    generateHeightMap: 0
-    generateSlopeMap: 0
-    generateAspectMap: 0
-    generateAspectColorMap: 0
-    generateDailySolarExposure: 0
-    generateAnnualSolarExposure: 0
-    generationDate: 
---- !u!114 &1885919813
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1885919806}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d3f29543ccb99334eaf4db94924081d9, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::map_analysis
-  terrain: {fileID: 1885919809}
-  solarExposureGenerator: {fileID: 1885919811}
-  generateMoistureMap: 1
-  heightMapFileName: heightmap.exr
-  slopeMapFileName: slopemap.exr
-  annualSolarExposureMapFileName: AnnualSolarExposure_3.exr
-  annualSamples: 12
-  generateMoisturePreview: 1
-  moistureMapFileName: moistureMap
-  moisturePreviewFileName: MoisturePreview
-  generatePlantSuitabilityPreviews: 1
-  plantPreferences:
-  - plantName: buk
-    generateSuitabilityMap: 1
-    heightPreference: 0.1
-    slopePreference: 0
-    exposurePreference: 0.5
-    moisturePreference: 0.6
-  - plantName: swierk
-    generateSuitabilityMap: 1
-    heightPreference: 0.7
-    slopePreference: 0.6
-    exposurePreference: 0.5
-    moisturePreference: 0.7
-  - plantName: trawa
-    generateSuitabilityMap: 1
-    heightPreference: 0.5
-    slopePreference: 0.2
-    exposurePreference: 0.6
-    moisturePreference: 0.4
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
@@ -655,3 +732,4 @@ SceneRoots:
   - {fileID: 410087041}
   - {fileID: 832575519}
   - {fileID: 1885919810}
+  - {fileID: 1680423290}

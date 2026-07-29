@@ -62,7 +62,7 @@ public class metadata_json : MonoBehaviour
     }
 
     public Terrain terrain;
-    public SaveTerrainMapsPNG terrainMapGenerator;
+    //public SaveTerrainMapsPNG terrainMapGenerator;
     public DailySolarExposure solarExposureGenerator;
     public map_analysis mapAnalysisGenerator;
 
@@ -93,10 +93,10 @@ public class metadata_json : MonoBehaviour
             terrain = Terrain.activeTerrain;
         }
 
-        if (terrainMapGenerator == null)
-        {
-            terrainMapGenerator = FindAnyObjectByType<SaveTerrainMapsPNG>();
-        }
+        // if (terrainMapGenerator == null)
+        // {
+        //     terrainMapGenerator = FindAnyObjectByType<SaveTerrainMapsPNG>();
+        // }
 
         if (solarExposureGenerator == null)
         {
@@ -138,36 +138,36 @@ public class metadata_json : MonoBehaviour
             meta.generateAnnualSolarExposure = solarExposureGenerator.generateAnnualSolarExposure;
         }
 
-        if (terrainMapGenerator != null)
-        {
-            meta.generateHeightMap = terrainMapGenerator.generateHeightMap;
-            meta.generateSlopeMap = terrainMapGenerator.generateSlopeMap;
-            meta.generateAspectMap = terrainMapGenerator.generateAspectMap;
-            meta.generateAspectColorMap = terrainMapGenerator.generateAspectColorMap;
-        }
+        // if (terrainMapGenerator != null)
+        // {
+        //     meta.generateHeightMap = terrainMapGenerator.generateHeightMap;
+        //     meta.generateSlopeMap = terrainMapGenerator.generateSlopeMap;
+        //     meta.generateAspectMap = terrainMapGenerator.generateAspectMap;
+        //     meta.generateAspectColorMap = terrainMapGenerator.generateAspectColorMap;
+        // }
 
-        if (mapAnalysisGenerator != null)
-        {
-            meta.generateDominantSpeciesMap = mapAnalysisGenerator.generateDominantSpeciesMap;
-            meta.generateSeedMap = mapAnalysisGenerator.generateSeedMap;
-            meta.seedSuitabilityThreshold = mapAnalysisGenerator.seedSuitabilityThreshold;
-            meta.seedLocalMaximumWindowSize = mapAnalysisGenerator.seedLocalMaximumWindowSize;
-            meta.seedProbabilityPower = mapAnalysisGenerator.seedProbabilityPower;
+        // if (mapAnalysisGenerator != null)
+        // {
+        //     meta.generateDominantSpeciesMap = mapAnalysisGenerator.generateDominantSpeciesMap;
+        //     meta.generateSeedMap = mapAnalysisGenerator.generateSeedMap;
+        //     meta.seedSuitabilityThreshold = mapAnalysisGenerator.seedSuitabilityThreshold;
+        //     meta.seedLocalMaximumWindowSize = mapAnalysisGenerator.seedLocalMaximumWindowSize;
+        //     meta.seedProbabilityPower = mapAnalysisGenerator.seedProbabilityPower;
 
-            if (mapAnalysisGenerator.plantPreferences != null)
-            {
-                meta.plantSpeciesLegend = new PlantSpeciesLegend[mapAnalysisGenerator.plantPreferences.Length];
-                for (int i = 0; i < mapAnalysisGenerator.plantPreferences.Length; i++)
-                {
-                    PlantPreference plant = mapAnalysisGenerator.plantPreferences[i];
-                    if (plant != null)
-                    {
-                        string colorHex = ColorUtility.ToHtmlStringRGB(plant.plantColor);
-                        meta.plantSpeciesLegend[i] = new PlantSpeciesLegend(plant.plantName, colorHex, i, plant.seedRadius);
-                    }
-                }
-            }
-        }
+        //     if (mapAnalysisGenerator.plantPreferences != null)
+        //     {
+        //         meta.plantSpeciesLegend = new PlantSpeciesLegend[mapAnalysisGenerator.plantPreferences.Length];
+        //         for (int i = 0; i < mapAnalysisGenerator.plantPreferences.Length; i++)
+        //         {
+        //             PlantPreference plant = mapAnalysisGenerator.plantPreferences[i];
+        //             if (plant != null)
+        //             {
+        //                 string colorHex = ColorUtility.ToHtmlStringRGB(plant.plantColor);
+        //                 meta.plantSpeciesLegend[i] = new PlantSpeciesLegend(plant.plantName, colorHex, i, plant.seedRadius);
+        //             }
+        //         }
+        //     }
+        // }
 
         meta.generationDate = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
     }
