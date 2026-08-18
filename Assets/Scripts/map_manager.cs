@@ -10,7 +10,11 @@ public class map_manager : MonoBehaviour
 
     public map_analysis mapAnalysis;
     public plant_analysis plantAnalysis;
+
+    public plant_placement plantPlacement;
     public DailySolarExposure solar_exposure;
+    [Header("Place Plants")]
+    public bool placePlants = true;
 
     [Header("Maps To Generate")]
     public bool generateHeightMap = true;
@@ -40,8 +44,37 @@ public class map_manager : MonoBehaviour
     {
         new Species("buk", 0.1f, 0.0f, 0.5f, 0.6f, 7f, 1f, 1f, 1f, new Color(0.2f, 0.8f, 0.2f, 1f)),
         new Species("swierk", 0.7f, 0.6f, 0.5f, 0.7f, 5f, 1f, 1f, 1f, new Color(0.2f, 0.4f, 0.8f, 1f)),
-        new Species("trawa", 0.5f, 0.2f, 0.6f, 0.4f, 1f, 1f, 1f, 1f, new Color(1f, 0.9f, 0.2f, 1f))
+        new Species("krzak", 0.5f, 0.2f, 0.6f, 0.4f, 1f, 1f, 1f, 1f, new Color(1f, 0.9f, 0.2f, 1f))
     };
+
+    void Awake()
+    {
+        if (terrain == null)
+        {
+            terrain = Terrain.activeTerrain;
+        }
+
+        if (mapAnalysis == null)
+        {
+            mapAnalysis = FindAnyObjectByType<map_analysis>();
+        }
+
+        if (plantAnalysis == null)
+        {
+            plantAnalysis = FindAnyObjectByType<plant_analysis>();
+        }
+
+        if (plantPlacement == null)
+        {
+            plantPlacement = FindAnyObjectByType<plant_placement>();
+        }
+
+        if (solar_exposure == null)
+        {
+            solar_exposure = FindAnyObjectByType<DailySolarExposure>();
+        }
+    }
+
     IEnumerator Start()
     {
         yield return null;
@@ -103,6 +136,16 @@ public class map_manager : MonoBehaviour
             {
                 plantAnalysis.GenerateDominantSpeciesMap(inputData, species, dominantSpeciesMapFileName, generateDominantSpeciesMap);
             }
+        }
+        if (placePlants)
+        {
+            if (plantPlacement == null)
+            {
+                Debug.LogError("Plant placement is not assigned.");
+                return;
+            }
+
+            plantPlacement.PlacePlants();
         }
     }
 

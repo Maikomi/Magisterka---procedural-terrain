@@ -109,10 +109,26 @@ public class plant_analysis : MonoBehaviour
 
         Texture2D seedMap = new Texture2D(inputData.resolution, inputData.resolution, TextureFormat.RGBAFloat, false);
         bool[,] blockedPixels = new bool[inputData.resolution, inputData.resolution];
+        Dictionary<Species, int> seedsPerSpecies = new Dictionary<Species, int>();
 
         for (int i = 0; i < candidates.Count; i++)
         {
             Seed seed = candidates[i];
+
+            if (seed == null || seed.species == null)
+            {
+                continue;
+            }
+
+            if (!seedsPerSpecies.TryGetValue(seed.species, out int speciesSeedCount))
+            {
+                speciesSeedCount = 0;
+            }
+
+            if (seed.species.maxSeedCountPerSpecies > 0 && speciesSeedCount >= seed.species.maxSeedCountPerSpecies)
+            {
+                continue;
+            }
 
             if (IsSeedBlocked(blockedPixels, seed.pixel, seed.species.seedRadius, inputData))
             {
@@ -121,6 +137,7 @@ public class plant_analysis : MonoBehaviour
 
             seedMap.SetPixel(seed.pixel.x, seed.pixel.y, seed.species.color);
             lastGeneratedSeeds.Add(seed);
+            seedsPerSpecies[seed.species] = speciesSeedCount + 1;
             BlockSeedArea(blockedPixels, seed.pixel, seed.species.seedRadius, inputData);
         }
 
@@ -292,7 +309,7 @@ public class plant_analysis : MonoBehaviour
     }
 
 
-    (Species?, float) GetDominantSpeciesInfo(MapInputData inputData, List<Species> species, int x, int y, float normX, float normY)
+    (Species, float) GetDominantSpeciesInfo(MapInputData inputData, List<Species> species, int x, int y, float normX, float normY)
     {
         if (species == null || species.Count == 0)
         {

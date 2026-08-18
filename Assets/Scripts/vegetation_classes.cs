@@ -8,6 +8,7 @@ public class Species
     public bool generateSuitabilityMap = true;
     public Color color = Color.white;
     public float seedRadius = 1f;
+    public int maxSeedCountPerSpecies = 0;
     public float growthRate;
     public float maxRadius;
 
@@ -29,7 +30,8 @@ public class Species
         float growthRate,
         float competetivness,
         float shadePreference,
-        Color color = default
+        Color color = default,
+        int maxSeedCountPerSpecies = 0
     )
     {
         this.plantName = plantName;
@@ -39,6 +41,7 @@ public class Species
         this.moisturePreference = moisturePreference;
         this.color = color != default ? color : Color.white;
         this.seedRadius = seedRadius;
+        this.maxSeedCountPerSpecies = maxSeedCountPerSpecies;
         this.growthRate = growthRate;
         this.competetivness = competetivness;
         this.shadePreference = shadePreference;
@@ -62,6 +65,12 @@ public class Species
     }
 }
 
+[Serializable]
+public class SpeciesPrefab
+{
+    public string speciesName;
+    public GameObject prefab;
+}
 
 [Serializable]
 public class Seed
