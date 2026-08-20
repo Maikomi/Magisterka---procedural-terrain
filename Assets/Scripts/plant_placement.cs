@@ -11,6 +11,7 @@ public class plant_placement : MonoBehaviour
 
     [Header("Placement")]
     public float heightOffset = 0f;
+    public Transform vegetationParent;
 
     Dictionary<string, GameObject> prefabDictionary;
 
@@ -89,7 +90,7 @@ public class plant_placement : MonoBehaviour
 
             worldPosition.y += heightOffset;
 
-            Instantiate(plantPrefab, worldPosition, Quaternion.identity);
+            Instantiate(plantPrefab, worldPosition, Quaternion.identity, vegetationParent);
             placedCount++;
         }
 

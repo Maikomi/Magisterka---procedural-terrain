@@ -28,6 +28,7 @@ public class Species
         float moisturePreference,
         float seedRadius,
         float growthRate,
+        float maxRadius,
         float competetivness,
         float shadePreference,
         Color color = default,
@@ -97,9 +98,10 @@ public class Plant
     public bool growing;
     public float shadow;
     public float energy;
+    public float competition;
     public int index;
 
-    public Plant(Seed seed, float radius, int age, bool isAlive, bool growing, float shadow, float energy, int index)
+    public Plant(Seed seed, float radius, int age, bool isAlive, bool growing, float shadow, float energy, float competition, int index)
     {
         this.seed = seed;
         this.radius = radius;
@@ -108,6 +110,7 @@ public class Plant
         this.growing = growing;
         this.shadow = shadow;
         this.energy = energy;
+        this.competition = competition;
         this.index = index;
     }
 }

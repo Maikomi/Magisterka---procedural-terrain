@@ -12,6 +12,7 @@ public class map_manager : MonoBehaviour
     public plant_analysis plantAnalysis;
 
     public plant_placement plantPlacement;
+    public plant_competition plantCompetition;
     public DailySolarExposure solar_exposure;
     [Header("Place Plants")]
     public bool placePlants = true;
@@ -42,9 +43,9 @@ public class map_manager : MonoBehaviour
 
     public List<Species> species = new List<Species>
     {
-        new Species("buk", 0.1f, 0.0f, 0.5f, 0.6f, 7f, 1f, 1f, 1f, new Color(0.2f, 0.8f, 0.2f, 1f)),
-        new Species("swierk", 0.7f, 0.6f, 0.5f, 0.7f, 5f, 1f, 1f, 1f, new Color(0.2f, 0.4f, 0.8f, 1f)),
-        new Species("krzak", 0.5f, 0.2f, 0.6f, 0.4f, 1f, 1f, 1f, 1f, new Color(1f, 0.9f, 0.2f, 1f))
+        new Species("buk", 0.1f, 0.0f, 0.5f, 0.6f, 7f, 1f, 15f, 1f, 1f, new Color(0.2f, 0.8f, 0.2f, 1f)),
+        new Species("swierk", 0.7f, 0.6f, 0.5f, 0.7f, 5f, 1f, 12f, 1f, 1f, new Color(0.2f, 0.4f, 0.8f, 1f)),
+        new Species("krzak", 0.5f, 0.2f, 0.6f, 0.4f, 1f, 1f, 5f, 1f, 1f, new Color(1f, 0.9f, 0.2f, 1f))
     };
 
     void Awake()
@@ -62,6 +63,11 @@ public class map_manager : MonoBehaviour
         if (plantAnalysis == null)
         {
             plantAnalysis = FindAnyObjectByType<plant_analysis>();
+        }
+
+        if (plantCompetition == null)
+        {
+            plantCompetition = FindAnyObjectByType<plant_competition>();
         }
 
         if (plantPlacement == null)
@@ -139,11 +145,19 @@ public class map_manager : MonoBehaviour
         }
         if (placePlants)
         {
+            if (plantCompetition == null)
+            {
+                Debug.LogError("Plant Competition is not assigned.");
+                return;
+            }
+
             if (plantPlacement == null)
             {
                 Debug.LogError("Plant placement is not assigned.");
                 return;
             }
+
+            plantCompetition.RunCompetition();
 
             plantPlacement.PlacePlants();
         }

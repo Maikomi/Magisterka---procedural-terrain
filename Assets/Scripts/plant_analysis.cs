@@ -4,6 +4,20 @@ using System.Collections.Generic;
 using System.IO;
 using System;
 
+[Serializable]
+public class SeedSaveData
+{
+    public string plantName;
+    public int x;
+    public int y;
+    public float suitability;
+}
+
+[Serializable]
+public class SeedSaveFile
+{
+    public List<SeedSaveData> seeds = new List<SeedSaveData>();
+}
 public class plant_analysis : MonoBehaviour
 {
     [Header("Seed Map")]
@@ -14,6 +28,7 @@ public class plant_analysis : MonoBehaviour
     public float seedProbabilityPower = 3f;
     static readonly System.Random SeedRandom = new System.Random();
     public readonly List<Seed> lastGeneratedSeeds = new List<Seed>();
+    public string seedsSaveFileName = "SeedMap.json";
 
     public void GenerateDominantSpeciesMap(MapInputData inputData, List<Species> species, string dominantSpeciesMapFileName, bool generatePreview)
     {
@@ -72,6 +87,116 @@ public class plant_analysis : MonoBehaviour
             map_helper.SavePng(dominantSpeciesMap, dominantSpeciesPreviewFileName);
             map_helper.SaveDominantSpeciesMapPng(dominantSpeciesMap, species, dominantSpeciesMapFileName, inputData);
         }
+    }
+
+    public void SaveSeedsToJson()
+    {
+        SeedSaveFile saveFile = new SeedSaveFile();
+
+        foreach (Seed seed in lastGeneratedSeeds)
+        {
+            if (seed == null || seed.species == null)
+            {
+                continue;
+            }
+
+            SeedSaveData seedData = new SeedSaveData
+            {
+                plantName = seed.species.plantName,
+                x = seed.pixel.x,
+                y = seed.pixel.y,
+                suitability = seed.suitability
+            };
+
+            saveFile.seeds.Add(seedData);
+        }
+
+        string mapsPath = map_helper.GetMapsPath();
+
+        if (!Directory.Exists(mapsPath))
+        {
+            Directory.CreateDirectory(mapsPath);
+        }
+
+        string filePath = Path.Combine(
+            mapsPath,
+            seedsSaveFileName
+        );
+
+        string json = JsonUtility.ToJson(saveFile, true);
+
+        File.WriteAllText(filePath, json);
+
+        Debug.Log(
+            $"Saved {saveFile.seeds.Count} seeds to: {filePath}"
+        );
+    }
+
+    public bool LoadSeedsFromJson(List<Species> species)
+    {
+        string mapsPath = map_helper.GetMapsPath();
+
+        string filePath = Path.Combine(
+            mapsPath,
+            seedsSaveFileName
+        );
+
+        if (!File.Exists(filePath))
+        {
+            Debug.LogWarning(
+                $"Seed file was not found: {filePath}"
+            );
+
+            return false;
+        }
+
+        string json = File.ReadAllText(filePath);
+
+        SeedSaveFile saveFile =
+            JsonUtility.FromJson<SeedSaveFile>(json);
+
+        if (saveFile == null || saveFile.seeds == null)
+        {
+            Debug.LogWarning(
+                "Seed file is empty or invalid."
+            );
+
+            return false;
+        }
+
+        lastGeneratedSeeds.Clear();
+
+        foreach (SeedSaveData seedData in saveFile.seeds)
+        {
+            Species speciesData = species.Find(
+                s => s != null &&
+                    s.plantName == seedData.plantName
+            );
+
+            if (speciesData == null)
+            {
+                Debug.LogWarning(
+                    $"Species '{seedData.plantName}' " +
+                    $"was not found. Seed skipped."
+                );
+
+                continue;
+            }
+
+            Seed seed = new Seed(
+                speciesData,
+                new Vector2Int(seedData.x, seedData.y),
+                seedData.suitability
+            );
+
+            lastGeneratedSeeds.Add(seed);
+        }
+
+        Debug.Log(
+            $"Loaded {lastGeneratedSeeds.Count} seeds."
+        );
+
+        return true;
     }
     public void GenerateSeedMap(MapInputData inputData, List<Species> species, string seedMapFileName, bool generatePreview)
     {
@@ -143,6 +268,7 @@ public class plant_analysis : MonoBehaviour
 
         seedMap.Apply();
         map_helper.SaveExr(seedMap, seedMapFileName);
+        SaveSeedsToJson();
         if (generatePreview)
         {
             string seedMapPreviewFileName = seedMapFileName + "_preview";
