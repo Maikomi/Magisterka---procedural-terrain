@@ -24,8 +24,11 @@ public class plant_analysis : MonoBehaviour
 
     public string seedMapFileName = "SeedMap";
     [Range(0f, 1f)] public float seedSuitabilityThreshold = 0.65f;
+    public bool usePoissonDiscSeedDistribution = true;
     public int seedLocalMaximumWindowSize = 10;
     public float seedProbabilityPower = 3f;
+    [Min(1)] public int poissonCandidatesPerPoint = 30;
+    [Min(0.01f)] public float poissonRadiusMultiplier = 1f;
     static readonly System.Random SeedRandom = new System.Random();
     public readonly List<Seed> lastGeneratedSeeds = new List<Seed>();
     public string seedsSaveFileName = "SeedMap.json";
@@ -206,29 +209,11 @@ public class plant_analysis : MonoBehaviour
             return;
         }
 
-        List<Seed> candidates = new List<Seed>();
         lastGeneratedSeeds.Clear();
 
-        map_helper.ForEachPixel(inputData.resolution, (x, y, normX, normY) =>
-        {
-            var dominantInfo = GetDominantSpeciesInfo(inputData, species, x, y, normX, normY);
-
-            if (dominantInfo.Item1 == null || dominantInfo.Item2 <= seedSuitabilityThreshold)
-            {
-                return;
-            }
-
-            if (!IsLocalMaximum(inputData, species, x, y, dominantInfo.Item2))
-            {
-                return;
-            }
-
-            float probability = Mathf.Pow(dominantInfo.Item2, seedProbabilityPower);
-            if ((float)SeedRandom.NextDouble() < probability)
-            {
-                candidates.Add(new Seed(dominantInfo.Item1, new Vector2Int(x, y), dominantInfo.Item2));
-            }
-        });
+        List<Seed> candidates = usePoissonDiscSeedDistribution
+            ? GeneratePoissonSeedCandidates(inputData, species)
+            : GenerateLocalMaximumSeedCandidates(inputData, species);
 
         candidates.Sort((left, right) => right.suitability.CompareTo(left.suitability));
 
@@ -275,6 +260,223 @@ public class plant_analysis : MonoBehaviour
             map_helper.SaveSeedMapPng(seedMap, seedMapPreviewFileName, inputData, species, lastGeneratedSeeds);
         }
 
+    }
+
+    List<Seed> GenerateLocalMaximumSeedCandidates(MapInputData inputData, List<Species> species)
+    {
+        List<Seed> candidates = new List<Seed>();
+
+        map_helper.ForEachPixel(inputData.resolution, (x, y, normX, normY) =>
+        {
+            var dominantInfo = GetDominantSpeciesInfo(inputData, species, x, y, normX, normY);
+
+            if (dominantInfo.Item1 == null || dominantInfo.Item2 <= seedSuitabilityThreshold)
+            {
+                return;
+            }
+
+            if (!IsLocalMaximum(inputData, species, x, y, dominantInfo.Item2))
+            {
+                return;
+            }
+
+            TryAddSeedCandidate(candidates, dominantInfo.Item1, new Vector2Int(x, y), dominantInfo.Item2);
+        });
+
+        return candidates;
+    }
+
+    List<Seed> GeneratePoissonSeedCandidates(MapInputData inputData, List<Species> species)
+    {
+        List<Seed> candidates = new List<Seed>();
+        float poissonRadius = GetPoissonRadiusInPixels(inputData, species);
+        List<Vector2> poissonPoints = GeneratePoissonPoints(
+            inputData.resolution,
+            poissonRadius,
+            poissonCandidatesPerPoint
+        );
+
+        foreach (Vector2 point in poissonPoints)
+        {
+            int x = Mathf.Clamp(Mathf.RoundToInt(point.x), 0, inputData.resolution - 1);
+            int y = Mathf.Clamp(Mathf.RoundToInt(point.y), 0, inputData.resolution - 1);
+            float normX = inputData.resolution > 1 ? (float)x / (inputData.resolution - 1) : 0f;
+            float normY = inputData.resolution > 1 ? (float)y / (inputData.resolution - 1) : 0f;
+            var dominantInfo = GetDominantSpeciesInfo(inputData, species, x, y, normX, normY);
+
+            if (dominantInfo.Item1 == null || dominantInfo.Item2 <= seedSuitabilityThreshold)
+            {
+                continue;
+            }
+
+            TryAddSeedCandidate(candidates, dominantInfo.Item1, new Vector2Int(x, y), dominantInfo.Item2);
+        }
+
+        Debug.Log(
+            $"Generated {candidates.Count} seed candidates from " +
+            $"{poissonPoints.Count} Poisson disc points."
+        );
+
+        return candidates;
+    }
+
+    void TryAddSeedCandidate(List<Seed> candidates, Species species, Vector2Int pixel, float suitability)
+    {
+        float probability = Mathf.Pow(suitability, seedProbabilityPower);
+
+        if ((float)SeedRandom.NextDouble() < probability)
+        {
+            candidates.Add(new Seed(species, pixel, suitability));
+        }
+    }
+
+    List<Vector2> GeneratePoissonPoints(int resolution, float radius, int candidatesPerPoint)
+    {
+        List<Vector2> points = new List<Vector2>();
+
+        if (resolution <= 0)
+        {
+            return points;
+        }
+
+        float effectiveRadius = Mathf.Max(1f, radius);
+        float cellSize = effectiveRadius / Mathf.Sqrt(2f);
+        int gridSize = Mathf.CeilToInt(resolution / cellSize);
+        Vector2[,] grid = new Vector2[gridSize, gridSize];
+        bool[,] occupiedGrid = new bool[gridSize, gridSize];
+        List<Vector2> activePoints = new List<Vector2>();
+
+        Vector2 firstPoint = new Vector2(
+            RandomRange(0f, resolution - 1),
+            RandomRange(0f, resolution - 1)
+        );
+
+        AddPoissonPoint(points, activePoints, grid, occupiedGrid, firstPoint, cellSize);
+
+        while (activePoints.Count > 0)
+        {
+            int activeIndex = SeedRandom.Next(activePoints.Count);
+            Vector2 activePoint = activePoints[activeIndex];
+            bool foundCandidate = false;
+
+            for (int i = 0; i < candidatesPerPoint; i++)
+            {
+                float angle = RandomRange(0f, Mathf.PI * 2f);
+                float distance = RandomRange(effectiveRadius, effectiveRadius * 2f);
+                Vector2 candidate = activePoint + new Vector2(
+                    Mathf.Cos(angle),
+                    Mathf.Sin(angle)
+                ) * distance;
+
+                if (!IsPoissonPointValid(candidate, resolution, effectiveRadius, cellSize, grid, occupiedGrid))
+                {
+                    continue;
+                }
+
+                AddPoissonPoint(points, activePoints, grid, occupiedGrid, candidate, cellSize);
+                foundCandidate = true;
+                break;
+            }
+
+            if (!foundCandidate)
+            {
+                activePoints.RemoveAt(activeIndex);
+            }
+        }
+
+        return points;
+    }
+
+    void AddPoissonPoint(
+        List<Vector2> points,
+        List<Vector2> activePoints,
+        Vector2[,] grid,
+        bool[,] occupiedGrid,
+        Vector2 point,
+        float cellSize)
+    {
+        points.Add(point);
+        activePoints.Add(point);
+
+        int gridX = Mathf.FloorToInt(point.x / cellSize);
+        int gridY = Mathf.FloorToInt(point.y / cellSize);
+        grid[gridX, gridY] = point;
+        occupiedGrid[gridX, gridY] = true;
+    }
+
+    bool IsPoissonPointValid(
+        Vector2 point,
+        int resolution,
+        float radius,
+        float cellSize,
+        Vector2[,] grid,
+        bool[,] occupiedGrid)
+    {
+        if (point.x < 0f ||
+            point.x > resolution - 1 ||
+            point.y < 0f ||
+            point.y > resolution - 1)
+        {
+            return false;
+        }
+
+        int gridX = Mathf.FloorToInt(point.x / cellSize);
+        int gridY = Mathf.FloorToInt(point.y / cellSize);
+        int minX = Mathf.Max(0, gridX - 2);
+        int maxX = Mathf.Min(grid.GetLength(0) - 1, gridX + 2);
+        int minY = Mathf.Max(0, gridY - 2);
+        int maxY = Mathf.Min(grid.GetLength(1) - 1, gridY + 2);
+        float radiusSquared = radius * radius;
+
+        for (int y = minY; y <= maxY; y++)
+        {
+            for (int x = minX; x <= maxX; x++)
+            {
+                Vector2 neighbor = grid[x, y];
+
+                if (!occupiedGrid[x, y])
+                {
+                    continue;
+                }
+
+                if ((neighbor - point).sqrMagnitude < radiusSquared)
+                {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
+    float GetPoissonRadiusInPixels(MapInputData inputData, List<Species> species)
+    {
+        float minRadiusMeters = float.MaxValue;
+
+        foreach (Species plant in species)
+        {
+            if (plant == null || plant.seedRadius <= 0f)
+            {
+                continue;
+            }
+
+            minRadiusMeters = Mathf.Min(minRadiusMeters, plant.seedRadius);
+        }
+
+        if (minRadiusMeters == float.MaxValue)
+        {
+            minRadiusMeters = map_helper.GetMetersPerPixel(inputData);
+        }
+
+        return GetSeedRadiusInPixels(
+            minRadiusMeters * poissonRadiusMultiplier,
+            inputData
+        );
+    }
+
+    float RandomRange(float min, float max)
+    {
+        return min + (float)SeedRandom.NextDouble() * (max - min);
     }
 
     public void GeneratePlantSuitabilityMaps(MapInputData inputData, List<Species> species, bool generatePlantSuitabilityPreviews)

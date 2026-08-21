@@ -73,6 +73,15 @@ public class plant_competition : MonoBehaviour
     [Range(0f, 1f)]
     public float deathEnergyThreshold = 0.05f;
 
+    [Header("Growth")]
+    [Tooltip("Growth multiplier used when a living plant has very low energy.")]
+    [Range(0f, 1f)]
+    public float lowEnergyGrowthMultiplier = 0.25f;
+
+    [Tooltip("How strongly current competition slows plant growth.")]
+    [Range(0f, 1f)]
+    public float competitionGrowthSlowdown = 0.5f;
+
     [Header("Debug")]
     public bool logSimulation = true;
 
@@ -181,13 +190,13 @@ public class plant_competition : MonoBehaviour
     {
         ResetCompetitionValues();
 
-        GrowPlants();
-
         CalculateCompetition(iteration + 1);
 
         UpdateEnergy();
 
         CheckDeaths();
+
+        GrowPlants();
 
         IncreaseAge();
 
@@ -231,10 +240,9 @@ public class plant_competition : MonoBehaviour
                 continue;
             }
 
-            float growth = species.growthRate;
+            float growth = CalculateBaseGrowth(species);
 
-            // Competition will reduce growth in later iterations.
-            growth *= Mathf.Clamp01(1f - plant.competition);
+            growth *= CalculateGrowthMultiplier(plant);
 
             plant.radius += growth;
 
@@ -248,6 +256,35 @@ public class plant_competition : MonoBehaviour
                 plant.growing = false;
             }
         }
+    }
+
+    float CalculateBaseGrowth(Species species)
+    {
+        float simulationLength = Mathf.Max(1, simulationIterations);
+        float growthRange = Mathf.Max(
+            0f,
+            species.maxRadius - species.seedRadius
+        );
+
+        return growthRange / simulationLength * Mathf.Max(
+            0f,
+            species.growthRate
+        );
+    }
+
+    float CalculateGrowthMultiplier(Plant plant)
+    {
+        float energyFactor = Mathf.Lerp(
+            lowEnergyGrowthMultiplier,
+            1f,
+            Mathf.Clamp01(plant.energy)
+        );
+
+        float competitionFactor = Mathf.Clamp01(
+            1f - plant.competition * competitionGrowthSlowdown
+        );
+
+        return energyFactor * competitionFactor;
     }
 
 

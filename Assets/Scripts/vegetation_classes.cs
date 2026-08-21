@@ -9,6 +9,7 @@ public class Species
     public Color color = Color.white;
     public float seedRadius = 1f;
     public int maxSeedCountPerSpecies = 0;
+    [Tooltip("Growth multiplier. 1 reaches maxRadius after all simulation iterations if growth is not slowed.")]
     public float growthRate;
     public float maxRadius;
 
@@ -44,6 +45,7 @@ public class Species
         this.seedRadius = seedRadius;
         this.maxSeedCountPerSpecies = maxSeedCountPerSpecies;
         this.growthRate = growthRate;
+        this.maxRadius = maxRadius;
         this.competetivness = competetivness;
         this.shadePreference = shadePreference;
     }

@@ -29,6 +29,11 @@ public class plant_placement_editor : Editor
             PlacePlants(placement);
         }
 
+        if (GUILayout.Button("Place Random Plants", GUILayout.Height(30)))
+        {
+            PlaceRandomPlants(placement);
+        }
+
         if (GUILayout.Button("Clear Plants", GUILayout.Height(30)))
         {
             ClearPlants(placement);
@@ -73,6 +78,27 @@ public class plant_placement_editor : Editor
         EnsureVegetationParentWithUndo(placement);
 
         placement.PlacePlants();
+
+        EditorUtility.SetDirty(placement);
+    }
+
+    void PlaceRandomPlants(plant_placement placement)
+    {
+        map_manager manager =
+            placement.GetComponent<map_manager>();
+
+        if (manager == null)
+        {
+            Debug.LogError(
+                "map_manager was not found on this GameObject."
+            );
+
+            return;
+        }
+
+        EnsureVegetationParentWithUndo(placement);
+
+        placement.PlaceRandomPlants(manager.species);
 
         EditorUtility.SetDirty(placement);
     }
