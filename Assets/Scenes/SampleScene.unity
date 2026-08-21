@@ -447,6 +447,7 @@ GameObject:
   - component: {fileID: 1680423287}
   - component: {fileID: 1680423286}
   - component: {fileID: 1680423285}
+  - component: {fileID: 1680423292}
   m_Layer: 0
   m_Name: Manager
   m_TagString: Untagged
@@ -547,6 +548,7 @@ MonoBehaviour:
   seedSuitabilityThreshold: 0.65
   seedLocalMaximumWindowSize: 10
   seedProbabilityPower: 3
+  seedsSaveFileName: SeedMap.json
 --- !u!114 &1680423289
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -562,7 +564,8 @@ MonoBehaviour:
   terrain: {fileID: 1885919809}
   mapAnalysis: {fileID: 1680423285}
   plantAnalysis: {fileID: 1680423288}
-  plantPlacement: {fileID: 0}
+  plantPlacement: {fileID: 1680423291}
+  plantCompetition: {fileID: 1680423292}
   solar_exposure: {fileID: 1680423287}
   placePlants: 1
   generateHeightMap: 1
@@ -587,9 +590,9 @@ MonoBehaviour:
     generateSuitabilityMap: 1
     color: {r: 0.2, g: 0.8, b: 0.2, a: 1}
     seedRadius: 7
-    maxSeedCountPerSpecies: 25
+    maxSeedCountPerSpecies: 300
     growthRate: 1
-    maxRadius: 0
+    maxRadius: 15
     heightPreference: 0.333
     slopePreference: 0.361
     exposurePreference: 0.5
@@ -600,9 +603,9 @@ MonoBehaviour:
     generateSuitabilityMap: 1
     color: {r: 0.2, g: 0.4, b: 0.8, a: 1}
     seedRadius: 5
-    maxSeedCountPerSpecies: 15
+    maxSeedCountPerSpecies: 200
     growthRate: 1
-    maxRadius: 0
+    maxRadius: 12
     heightPreference: 0.7
     slopePreference: 0.6
     exposurePreference: 0.5
@@ -613,9 +616,9 @@ MonoBehaviour:
     generateSuitabilityMap: 1
     color: {r: 1, g: 0.9, b: 0.2, a: 1}
     seedRadius: 5
-    maxSeedCountPerSpecies: 40
+    maxSeedCountPerSpecies: 400
     growthRate: 1
-    maxRadius: 0
+    maxRadius: 7
     heightPreference: 0.5
     slopePreference: 0.3
     exposurePreference: 0.733
@@ -659,6 +662,29 @@ MonoBehaviour:
   terrain: {fileID: 1885919809}
   plantAnalysis: {fileID: 1680423288}
   heightOffset: 0
+  vegetationParent: {fileID: 0}
+--- !u!114 &1680423292
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1680423284}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e1a4ef3b6f8761d448bebc2aabd9de51, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::plant_competition
+  terrain: {fileID: 1885919809}
+  plantAnalysis: {fileID: 1680423288}
+  simulationIterations: 20
+  initialEnergy: 1
+  competitionEnergyLoss: 0.1
+  deathEnergyThreshold: 0.05
+  logSimulation: 1
+  saveCompetitionOutputs: 1
+  competitionInteractionsFileName: PlantCompetitionInteractions.json
+  plantFinalStatusFileName: PlantFinalStatus.json
 --- !u!1 &1885919806
 GameObject:
   m_ObjectHideFlags: 0

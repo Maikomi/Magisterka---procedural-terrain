@@ -1,5 +1,58 @@
 using UnityEngine;
 using System.Collections.Generic;
+using System;
+using System.IO;
+
+[Serializable]
+public class CompetitionInteractionSaveData
+{
+    public int iteration;
+    public int plantAIndex;
+    public string plantASpecies;
+    public float plantARadius;
+    public int plantBIndex;
+    public string plantBSpecies;
+    public float plantBRadius;
+    public float distance;
+    public float overlap;
+    public float combinedRadius;
+    public float competitionToA;
+    public float competitionToB;
+}
+
+[Serializable]
+public class CompetitionInteractionsSaveFile
+{
+    public int simulationIterations;
+    public int totalPlants;
+    public List<CompetitionInteractionSaveData> interactions =
+        new List<CompetitionInteractionSaveData>();
+}
+
+[Serializable]
+public class PlantFinalStatusSaveData
+{
+    public int index;
+    public string species;
+    public int pixelX;
+    public int pixelY;
+    public float radius;
+    public float energy;
+    public float competition;
+    public int age;
+    public bool growing;
+    public bool isAlive;
+}
+
+[Serializable]
+public class PlantFinalStatusSaveFile
+{
+    public int simulationIterations;
+    public int totalPlants;
+    public int alivePlants;
+    public List<PlantFinalStatusSaveData> plants =
+        new List<PlantFinalStatusSaveData>();
+}
 
 public class plant_competition : MonoBehaviour
 {
@@ -23,7 +76,16 @@ public class plant_competition : MonoBehaviour
     [Header("Debug")]
     public bool logSimulation = true;
 
+    [Header("Output")]
+    public bool saveCompetitionOutputs = true;
+    public string competitionInteractionsFileName =
+        "PlantCompetitionInteractions.json";
+    public string plantFinalStatusFileName =
+        "PlantFinalStatus.json";
+
     public readonly List<Plant> finalPlants = new List<Plant>();
+    readonly List<CompetitionInteractionSaveData> competitionInteractions =
+        new List<CompetitionInteractionSaveData>();
 
 
     public void RunCompetition()
@@ -52,6 +114,8 @@ public class plant_competition : MonoBehaviour
             return;
         }
 
+        competitionInteractions.Clear();
+
         CreatePlantsFromSeeds(seeds);
 
         if (logSimulation)
@@ -74,6 +138,11 @@ public class plant_competition : MonoBehaviour
                 $"Plant competition finished. " +
                 $"Alive plants: {aliveCount}/{finalPlants.Count}"
             );
+        }
+
+        if (saveCompetitionOutputs)
+        {
+            SaveCompetitionOutputs();
         }
     }
 
@@ -114,7 +183,7 @@ public class plant_competition : MonoBehaviour
 
         GrowPlants();
 
-        CalculateCompetition();
+        CalculateCompetition(iteration + 1);
 
         UpdateEnergy();
 
@@ -182,7 +251,7 @@ public class plant_competition : MonoBehaviour
     }
 
 
-    void CalculateCompetition()
+    void CalculateCompetition(int iteration)
     {
         for (int i = 0; i < finalPlants.Count; i++)
         {
@@ -237,10 +306,120 @@ public class plant_competition : MonoBehaviour
 
                 plantA.competition += competitionA;
                 plantB.competition += competitionB;
+
+                competitionInteractions.Add(
+                    new CompetitionInteractionSaveData
+                    {
+                        iteration = iteration,
+                        plantAIndex = plantA.index,
+                        plantASpecies = plantA.seed.species.plantName,
+                        plantARadius = plantA.radius,
+                        plantBIndex = plantB.index,
+                        plantBSpecies = plantB.seed.species.plantName,
+                        plantBRadius = plantB.radius,
+                        distance = distance,
+                        overlap = overlap,
+                        combinedRadius = combinedRadius,
+                        competitionToA = competitionA,
+                        competitionToB = competitionB
+                    }
+                );
             }
         }
 
         NormalizeCompetitionValues();
+    }
+
+
+    void SaveCompetitionOutputs()
+    {
+        string mapsPath = map_helper.GetMapsPath();
+
+        SaveCompetitionInteractionsToJson(mapsPath);
+        SaveFinalPlantStatusToJson(mapsPath);
+    }
+
+
+    void SaveCompetitionInteractionsToJson(string mapsPath)
+    {
+        CompetitionInteractionsSaveFile saveFile =
+            new CompetitionInteractionsSaveFile
+            {
+                simulationIterations = simulationIterations,
+                totalPlants = finalPlants.Count,
+                interactions =
+                    new List<CompetitionInteractionSaveData>(
+                        competitionInteractions
+                    )
+            };
+
+        string filePath = Path.Combine(
+            mapsPath,
+            competitionInteractionsFileName
+        );
+
+        string json = JsonUtility.ToJson(saveFile, true);
+        File.WriteAllText(filePath, json);
+
+        if (logSimulation)
+        {
+            Debug.Log(
+                $"Saved {saveFile.interactions.Count} competition interactions to: {filePath}"
+            );
+        }
+    }
+
+
+    void SaveFinalPlantStatusToJson(string mapsPath)
+    {
+        PlantFinalStatusSaveFile saveFile =
+            new PlantFinalStatusSaveFile
+            {
+                simulationIterations = simulationIterations,
+                totalPlants = finalPlants.Count,
+                alivePlants = CountAlivePlants()
+            };
+
+        foreach (Plant plant in finalPlants)
+        {
+            if (plant == null ||
+                plant.seed == null ||
+                plant.seed.species == null)
+            {
+                continue;
+            }
+
+            saveFile.plants.Add(
+                new PlantFinalStatusSaveData
+                {
+                    index = plant.index,
+                    species = plant.seed.species.plantName,
+                    pixelX = plant.seed.pixel.x,
+                    pixelY = plant.seed.pixel.y,
+                    radius = plant.radius,
+                    energy = plant.energy,
+                    competition = plant.competition,
+                    age = plant.age,
+                    growing = plant.growing,
+                    isAlive = plant.isAlive
+                }
+            );
+        }
+
+        string filePath = Path.Combine(
+            mapsPath,
+            plantFinalStatusFileName
+        );
+
+        string json = JsonUtility.ToJson(saveFile, true);
+        File.WriteAllText(filePath, json);
+
+        if (logSimulation)
+        {
+            Debug.Log(
+                $"Saved {saveFile.plants.Count} final plant statuses to: {filePath}"
+            );
+        }
     }
 
 

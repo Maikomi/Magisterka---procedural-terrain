@@ -159,6 +159,18 @@ public class map_manager : MonoBehaviour
 
             plantCompetition.RunCompetition();
 
+            plantPlacement.plantCompetition = plantCompetition;
+
+            if (plantPlacement.plantAnalysis == null)
+            {
+                plantPlacement.plantAnalysis = plantAnalysis;
+            }
+
+            if (plantPlacement.terrain == null)
+            {
+                plantPlacement.terrain = terrain;
+            }
+
             plantPlacement.PlacePlants();
         }
     }
