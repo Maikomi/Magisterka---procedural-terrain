@@ -15,6 +15,10 @@ public class plant_placement : MonoBehaviour
     public float heightOffset = 0f;
     public Transform vegetationParent;
 
+    [Header("Model Scaling")]
+    public bool scaleModelsByGrowth = true;
+    [Range(0.01f, 1f)] public float minimumModelScaleRatio = 0.2f;
+
     [Header("Random Research Placement")]
     [Min(1)] public int randomPlantCount = 660;
 
@@ -151,7 +155,14 @@ public class plant_placement : MonoBehaviour
                 continue;
             }
 
-            if (PlacePlant(plant.seed))
+            if (PlacePlant(
+                plant.seed.species.plantName,
+                plant.seed.pixel,
+                GetGrowthScaleRatio(
+                    plant.radius,
+                    plant.seed.species.maxRadius
+                )
+            ))
             {
                 placedCount++;
             }
@@ -229,7 +240,8 @@ public class plant_placement : MonoBehaviour
 
             if (PlacePlant(
                 plant.species,
-                new Vector2Int(plant.pixelX, plant.pixelY)
+                new Vector2Int(plant.pixelX, plant.pixelY),
+                GetGrowthScaleRatio(plant)
             ))
             {
                 placedCount++;
@@ -368,10 +380,19 @@ public class plant_placement : MonoBehaviour
             return false;
         }
 
-        return PlacePlant(seed.species.plantName, seed.pixel);
+        return PlacePlant(
+            seed.species.plantName,
+            seed.pixel,
+            GetGrowthScaleRatio(seed.species.seedRadius, seed.species.maxRadius)
+        );
     }
 
     bool PlacePlant(string speciesName, Vector2Int pixel)
+    {
+        return PlacePlant(speciesName, pixel, 1f);
+    }
+
+    bool PlacePlant(string speciesName, Vector2Int pixel, float modelScaleRatio)
     {
         if (string.IsNullOrWhiteSpace(speciesName))
         {
@@ -404,6 +425,8 @@ public class plant_placement : MonoBehaviour
                     Quaternion.identity
                 );
 
+                ApplyModelScale(plantObject, modelScaleRatio);
+
                 UnityEditor.Undo.RegisterCreatedObjectUndo(
                     plantObject,
                     "Place Plant"
@@ -414,8 +437,87 @@ public class plant_placement : MonoBehaviour
         }
 #endif
 
-        Instantiate(plantPrefab, worldPosition, Quaternion.identity, vegetationParent);
+        GameObject runtimePlantObject =
+            Instantiate(plantPrefab, worldPosition, Quaternion.identity, vegetationParent);
+
+        ApplyModelScale(runtimePlantObject, modelScaleRatio);
         return true;
+    }
+
+    void ApplyModelScale(GameObject plantObject, float modelScaleRatio)
+    {
+        if (plantObject == null || !scaleModelsByGrowth)
+        {
+            return;
+        }
+
+        float safeScaleRatio = Mathf.Max(0.01f, modelScaleRatio);
+
+        plantObject.transform.localScale *= safeScaleRatio;
+    }
+
+    float GetGrowthScaleRatio(PlantFinalStatusSaveData plant)
+    {
+        if (plant == null)
+        {
+            return 1f;
+        }
+
+        if (plant.growthRatio > 0f)
+        {
+            return ClampModelScaleRatio(plant.growthRatio);
+        }
+
+        float maxRadius = plant.maxRadius > 0f
+            ? plant.maxRadius
+            : GetSpeciesMaxRadius(plant.species);
+
+        return GetGrowthScaleRatio(plant.radius, maxRadius);
+    }
+
+    float GetGrowthScaleRatio(float radius, float maxRadius)
+    {
+        if (maxRadius <= 0f)
+        {
+            return 1f;
+        }
+
+        return ClampModelScaleRatio(radius / maxRadius);
+    }
+
+    float ClampModelScaleRatio(float ratio)
+    {
+        return Mathf.Clamp(
+            ratio,
+            minimumModelScaleRatio,
+            1f
+        );
+    }
+
+    float GetSpeciesMaxRadius(string speciesName)
+    {
+        if (string.IsNullOrWhiteSpace(speciesName))
+        {
+            return 0f;
+        }
+
+        map_manager manager = GetComponent<map_manager>();
+
+        if (manager == null)
+        {
+            manager = FindAnyObjectByType<map_manager>();
+        }
+
+        if (manager == null || manager.species == null)
+        {
+            return 0f;
+        }
+
+        Species species = manager.species.Find(
+            plant => plant != null && plant.plantName == speciesName
+        );
+
+        return species != null ? species.maxRadius : 0f;
     }
 
     string GetFinalStatusPath()

@@ -37,6 +37,8 @@ public class PlantFinalStatusSaveData
     public int pixelX;
     public int pixelY;
     public float radius;
+    public float maxRadius;
+    public float growthRatio;
     public float energy;
     public float competition;
     public int age;
@@ -434,6 +436,8 @@ public class plant_competition : MonoBehaviour
                     pixelX = plant.seed.pixel.x,
                     pixelY = plant.seed.pixel.y,
                     radius = plant.radius,
+                    maxRadius = plant.seed.species.maxRadius,
+                    growthRatio = CalculateGrowthRatio(plant),
                     energy = plant.energy,
                     competition = plant.competition,
                     age = plant.age,
@@ -457,6 +461,21 @@ public class plant_competition : MonoBehaviour
                 $"Saved {saveFile.plants.Count} final plant statuses to: {filePath}"
             );
         }
+    }
+
+    float CalculateGrowthRatio(Plant plant)
+    {
+        if (plant == null ||
+            plant.seed == null ||
+            plant.seed.species == null ||
+            plant.seed.species.maxRadius <= 0f)
+        {
+            return 1f;
+        }
+
+        return Mathf.Clamp01(
+            plant.radius / plant.seed.species.maxRadius
+        );
     }
 
 
