@@ -10,6 +10,7 @@ public class map_manager : MonoBehaviour
 
     public map_analysis mapAnalysis;
     public plant_analysis plantAnalysis;
+    public grass_analysis grassAnalysis;
 
     public plant_placement plantPlacement;
     public plant_competition plantCompetition;
@@ -29,6 +30,9 @@ public class map_manager : MonoBehaviour
     public string seedMapFileName = "SeedMap";
     public bool generateDominantSpeciesMap = true;
     public string dominantSpeciesMapFileName = "DominantSpeciesMap";
+    public bool generateGrassMap = true;
+    public string grassMapFileName = "GrassMap";
+    public bool generateGrassPreview = true;
 
     [Header("Input Maps")]
     public string heightMapFileName = "heightmap.exr";
@@ -63,6 +67,11 @@ public class map_manager : MonoBehaviour
         if (plantAnalysis == null)
         {
             plantAnalysis = FindAnyObjectByType<plant_analysis>();
+        }
+
+        if (grassAnalysis == null)
+        {
+            grassAnalysis = FindAnyObjectByType<grass_analysis>();
         }
 
         if (plantCompetition == null)
@@ -119,6 +128,30 @@ public class map_manager : MonoBehaviour
                 mapAnalysis.GenerateMoistureMap(inputData, moistureMapFileName, generateMoisturePreview);
             }
         }
+
+        if (generateGrassMap)
+        {
+            MapInputData inputData = PrepareInputData();
+
+            if (inputData.IsValid)
+            {
+                if (grassAnalysis == null)
+                {
+                    Debug.LogError(
+                        "Grass Analysis is not assigned."
+                    );
+
+                    return;
+                }
+
+                grassAnalysis.GenerateGrassMap(
+                    inputData,
+                    grassMapFileName,
+                    generateGrassPreview
+                );
+            }
+        }
+
         if (generatePlantSuitabilityPreviews)
         {
             MapInputData inputData = PrepareInputData();

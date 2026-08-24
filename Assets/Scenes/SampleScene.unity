@@ -546,8 +546,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::plant_analysis
   seedMapFileName: SeedMap
   seedSuitabilityThreshold: 0.65
+  usePoissonDiscSeedDistribution: 1
   seedLocalMaximumWindowSize: 10
   seedProbabilityPower: 3
+  poissonCandidatesPerPoint: 30
+  poissonRadiusMultiplier: 1
   seedsSaveFileName: SeedMap.json
 --- !u!114 &1680423289
 MonoBehaviour:
@@ -661,8 +664,12 @@ MonoBehaviour:
     prefab: {fileID: 4260733826162580944, guid: 45c91204aa1850a4f9bbf8358d28f26e, type: 3}
   terrain: {fileID: 1885919809}
   plantAnalysis: {fileID: 1680423288}
+  plantCompetition: {fileID: 0}
   heightOffset: 0
-  vegetationParent: {fileID: 0}
+  vegetationParent: {fileID: 1861272466}
+  scaleModelsByGrowth: 1
+  minimumModelScaleRatio: 0.2
+  randomPlantCount: 660
 --- !u!114 &1680423292
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -681,10 +688,43 @@ MonoBehaviour:
   initialEnergy: 1
   competitionEnergyLoss: 0.1
   deathEnergyThreshold: 0.05
+  lowEnergyGrowthMultiplier: 0.25
+  competitionGrowthSlowdown: 0.5
   logSimulation: 1
   saveCompetitionOutputs: 1
   competitionInteractionsFileName: PlantCompetitionInteractions.json
   plantFinalStatusFileName: PlantFinalStatus.json
+--- !u!1 &1861272465
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1861272466}
+  m_Layer: 0
+  m_Name: Generated Vegetation
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1861272466
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1861272465}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1885919806
 GameObject:
   m_ObjectHideFlags: 0
@@ -787,3 +827,4 @@ SceneRoots:
   - {fileID: 832575519}
   - {fileID: 1885919810}
   - {fileID: 1680423290}
+  - {fileID: 1861272466}
