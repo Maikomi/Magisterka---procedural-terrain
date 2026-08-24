@@ -47,9 +47,21 @@ public class map_manager : MonoBehaviour
 
     public List<Species> species = new List<Species>
     {
-        new Species("buk", 0.1f, 0.0f, 0.5f, 0.6f, 7f, 1f, 15f, 1f, 1f, new Color(0.2f, 0.8f, 0.2f, 1f)),
-        new Species("swierk", 0.7f, 0.6f, 0.5f, 0.7f, 5f, 1f, 12f, 1f, 1f, new Color(0.2f, 0.4f, 0.8f, 1f)),
-        new Species("krzak", 0.5f, 0.2f, 0.6f, 0.4f, 1f, 1f, 5f, 1f, 1f, new Color(1f, 0.9f, 0.2f, 1f))
+       new Species(
+            "swierk",
+            new Vector2(0.3f, 0.9f), // wysokość
+            new Vector2(0.2f, 0.7f), // nachylenie
+            new Vector2(0.2f, 0.8f), // ekspozycja
+            new Vector2(0.5f, 1.0f), // wilgotność
+            5f,                     // seedRadius
+            1f,                     // growthRate
+            15f,                    // maxRadius
+            1f,                     // competitiveness
+            1f,                     // shadePreference
+            new Color(0.2f, 0.4f, 0.8f, 1f)
+        ),
+        new Species("swierk", new Vector2(0.6f, 0.8f), new Vector2(0.55f, 0.65f), new Vector2( 0.45f, 0.5f), new Vector2(0.7f, 0.85f), 5f, 1f, 12f, 1f, 1f, new Color(0.2f, 0.4f, 0.8f, 1f)),
+        new Species("krzak", new Vector2(0.45f, 0.5f), new Vector2(0.15f, 0.25f), new Vector2(0.55f, 0.65f), new Vector2(0.4f, 0.6f), 1f, 1f, 5f, 1f, 1f, new Color(1f, 0.9f, 0.2f, 1f))
     };
 
     void Awake()

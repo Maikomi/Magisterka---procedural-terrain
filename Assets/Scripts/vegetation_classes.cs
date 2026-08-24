@@ -13,20 +13,20 @@ public class Species
     public float growthRate;
     public float maxRadius;
 
-    [Range(0f, 1f)] public float heightPreference;
-    [Range(0f, 1f)] public float slopePreference;
-    [Range(0f, 1f)] public float exposurePreference;
-    [Range(0f, 1f)] public float moisturePreference;
+    public Vector2 heightPreference;
+    public Vector2 slopePreference;
+    public Vector2 exposurePreference;
+    public Vector2 moisturePreference;
 
     public float competetivness;
     public float shadePreference;
 
     public Species(
         string plantName,
-        float heightPreference,
-        float slopePreference,
-        float exposurePreference,
-        float moisturePreference,
+        Vector2 heightPreference,
+        Vector2 slopePreference,
+        Vector2 exposurePreference,
+        Vector2 moisturePreference,
         float seedRadius,
         float growthRate,
         float maxRadius,
@@ -50,12 +50,23 @@ public class Species
         this.shadePreference = shadePreference;
     }
 
-    public float CalculateSuitability(float height, float slope, float exposure, float moisture)
+    public float CalculateSuitability(
+        float height,
+        float slope,
+        float exposure,
+        float moisture)
     {
-        float heightSuitability = 1f - Mathf.Abs(height - heightPreference);
-        float slopeSuitability = 1f - Mathf.Abs(slope - slopePreference);
-        float exposureSuitability = 1f - Mathf.Abs(exposure - exposurePreference);
-        float moistureSuitability = 1f - Mathf.Abs(moisture - moisturePreference);
+        float heightSuitability =
+            CalculateRangeSuitability(height, heightPreference);
+
+        float slopeSuitability =
+            CalculateRangeSuitability(slope, slopePreference);
+
+        float exposureSuitability =
+            CalculateRangeSuitability(exposure, exposurePreference);
+
+        float moistureSuitability =
+            CalculateRangeSuitability(moisture, moisturePreference);
 
         return Mathf.Clamp01(
             (
@@ -64,6 +75,38 @@ public class Species
                 + exposureSuitability
                 + moistureSuitability
             ) / 4f
+        );
+    }
+    float CalculateRangeSuitability(float value, Vector2 range)
+    {
+        float min = Mathf.Min(range.x, range.y);
+        float max = Mathf.Max(range.x, range.y);
+
+        // Wewnątrz preferowanego zakresu.
+        if (value >= min && value <= max)
+        {
+            return 1f;
+        }
+
+        // Poniżej zakresu.
+        if (value < min)
+        {
+            if (min <= 0f)
+            {
+                return 0f;
+            }
+
+            return Mathf.Clamp01(value / min);
+        }
+
+        // Powyżej zakresu.
+        if (max >= 1f)
+        {
+            return 0f;
+        }
+
+        return Mathf.Clamp01(
+            (1f - value) / (1f - max)
         );
     }
 }

@@ -448,6 +448,7 @@ GameObject:
   - component: {fileID: 1680423286}
   - component: {fileID: 1680423285}
   - component: {fileID: 1680423292}
+  - component: {fileID: 1680423293}
   m_Layer: 0
   m_Name: Manager
   m_TagString: Untagged
@@ -567,6 +568,7 @@ MonoBehaviour:
   terrain: {fileID: 1885919809}
   mapAnalysis: {fileID: 1680423285}
   plantAnalysis: {fileID: 1680423288}
+  grassAnalysis: {fileID: 1680423293}
   plantPlacement: {fileID: 1680423291}
   plantCompetition: {fileID: 1680423292}
   solar_exposure: {fileID: 1680423287}
@@ -581,6 +583,9 @@ MonoBehaviour:
   seedMapFileName: SeedMap
   generateDominantSpeciesMap: 1
   dominantSpeciesMapFileName: DominantSpeciesMap
+  generateGrassMap: 1
+  grassMapFileName: GrassMap
+  generateGrassPreview: 1
   heightMapFileName: heightmap.exr
   slopeMapFileName: slopemap.exr
   aspectMapFileName: aspectmap.exr
@@ -593,13 +598,13 @@ MonoBehaviour:
     generateSuitabilityMap: 1
     color: {r: 0.2, g: 0.8, b: 0.2, a: 1}
     seedRadius: 7
-    maxSeedCountPerSpecies: 300
+    maxSeedCountPerSpecies: 500
     growthRate: 1
     maxRadius: 15
-    heightPreference: 0.333
-    slopePreference: 0.361
-    exposurePreference: 0.5
-    moisturePreference: 0.6
+    heightPreference: {x: 0.3, y: 0.9}
+    slopePreference: {x: 0.2, y: 0.7}
+    exposurePreference: {x: 0.2, y: 0.8}
+    moisturePreference: {x: 0.5, y: 1}
     competetivness: 1
     shadePreference: 1
   - plantName: swierk
@@ -609,10 +614,10 @@ MonoBehaviour:
     maxSeedCountPerSpecies: 200
     growthRate: 1
     maxRadius: 12
-    heightPreference: 0.7
-    slopePreference: 0.6
-    exposurePreference: 0.5
-    moisturePreference: 0.374
+    heightPreference: {x: 0.6, y: 0.8}
+    slopePreference: {x: 0.55, y: 0.65}
+    exposurePreference: {x: 0.45, y: 0.5}
+    moisturePreference: {x: 0.7, y: 0.85}
     competetivness: 1
     shadePreference: 1
   - plantName: krzak
@@ -622,10 +627,10 @@ MonoBehaviour:
     maxSeedCountPerSpecies: 400
     growthRate: 1
     maxRadius: 7
-    heightPreference: 0.5
-    slopePreference: 0.3
-    exposurePreference: 0.733
-    moisturePreference: 0.517
+    heightPreference: {x: 0.45, y: 0.5}
+    slopePreference: {x: 0.15, y: 0.25}
+    exposurePreference: {x: 0.55, y: 0.65}
+    moisturePreference: {x: 0.4, y: 0.6}
     competetivness: 1
     shadePreference: 1
 --- !u!4 &1680423290
@@ -664,7 +669,7 @@ MonoBehaviour:
     prefab: {fileID: 4260733826162580944, guid: 45c91204aa1850a4f9bbf8358d28f26e, type: 3}
   terrain: {fileID: 1885919809}
   plantAnalysis: {fileID: 1680423288}
-  plantCompetition: {fileID: 0}
+  plantCompetition: {fileID: 1680423292}
   heightOffset: 0
   vegetationParent: {fileID: 1861272466}
   scaleModelsByGrowth: 1
@@ -694,6 +699,21 @@ MonoBehaviour:
   saveCompetitionOutputs: 1
   competitionInteractionsFileName: PlantCompetitionInteractions.json
   plantFinalStatusFileName: PlantFinalStatus.json
+--- !u!114 &1680423293
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1680423284}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f10ac8d0b9dbd654aa1e79b41452103d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::grass_analysis
+  grassMaxHeight: 0.651
+  grassMaxSlope: 0.8
+  grassMinMoisture: 0.2
 --- !u!1 &1861272465
 GameObject:
   m_ObjectHideFlags: 0
