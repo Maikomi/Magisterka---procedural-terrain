@@ -525,13 +525,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: '::'
   terrain: {fileID: 1885919809}
   generateDailySolarExposure: 0
-  generateAnnualSolarExposure: 0
+  generateAnnualSolarExposure: 1
   latitude: 45
   dayOfYear: 180
   hourStart: 5
   hourEnd: 21
   hourStep: 2
-  annualSamples: 5
+  annualSamples: 7
   maxDistanceSamples: 32
 --- !u!114 &1680423288
 MonoBehaviour:
@@ -574,8 +574,8 @@ MonoBehaviour:
   solar_exposure: {fileID: 1680423287}
   placePlants: 1
   generateHeightMap: 1
-  generateSlopeMap: 0
-  generateAspectMap: 0
+  generateSlopeMap: 1
+  generateAspectMap: 1
   solarExposureGenerator: {fileID: 1680423287}
   generateMoistureMap: 0
   generatePlantSuitabilityPreviews: 1
@@ -597,8 +597,8 @@ MonoBehaviour:
   - plantName: buk
     generateSuitabilityMap: 1
     color: {r: 0.2, g: 0.8, b: 0.2, a: 1}
-    seedRadius: 7
-    maxSeedCountPerSpecies: 500
+    seedRadius: 5
+    maxSeedCountPerSpecies: 400
     growthRate: 1
     maxRadius: 15
     heightPreference: {x: 0.3, y: 0.9}
@@ -610,8 +610,8 @@ MonoBehaviour:
   - plantName: swierk
     generateSuitabilityMap: 1
     color: {r: 0.2, g: 0.4, b: 0.8, a: 1}
-    seedRadius: 5
-    maxSeedCountPerSpecies: 200
+    seedRadius: 3
+    maxSeedCountPerSpecies: 250
     growthRate: 1
     maxRadius: 12
     heightPreference: {x: 0.6, y: 0.8}
@@ -623,8 +623,8 @@ MonoBehaviour:
   - plantName: krzak
     generateSuitabilityMap: 1
     color: {r: 1, g: 0.9, b: 0.2, a: 1}
-    seedRadius: 5
-    maxSeedCountPerSpecies: 400
+    seedRadius: 2
+    maxSeedCountPerSpecies: 300
     growthRate: 1
     maxRadius: 7
     heightPreference: {x: 0.45, y: 0.5}
@@ -662,11 +662,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::plant_placement
   speciesPrefabs:
   - speciesName: buk
-    prefab: {fileID: 5751663148807024357, guid: 0a0b920ccb9afb74e8dc0e981dac9f6e, type: 3}
+    prefab: {fileID: 3416579149820165379, guid: d84fef165871de449b201d71418260b4, type: 3}
   - speciesName: swierk
-    prefab: {fileID: 4685355124675693208, guid: d34c60291376d684abc963beff2da09f, type: 3}
+    prefab: {fileID: 8185793832496569501, guid: 632cb5ba8e6554c4d895ced6ffb22702, type: 3}
   - speciesName: krzak
-    prefab: {fileID: 4260733826162580944, guid: 45c91204aa1850a4f9bbf8358d28f26e, type: 3}
+    prefab: {fileID: 5503166992987660084, guid: a89bea7274b16dd48b641c1547ee91e1, type: 3}
   terrain: {fileID: 1885919809}
   plantAnalysis: {fileID: 1680423288}
   plantCompetition: {fileID: 1680423292}
@@ -674,7 +674,7 @@ MonoBehaviour:
   vegetationParent: {fileID: 1861272466}
   scaleModelsByGrowth: 1
   minimumModelScaleRatio: 0.2
-  randomPlantCount: 660
+  randomPlantCount: 2000
 --- !u!114 &1680423292
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -711,7 +711,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f10ac8d0b9dbd654aa1e79b41452103d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::grass_analysis
-  grassMaxHeight: 0.651
+  grassMaxHeight: 0.5
   grassMaxSlope: 0.8
   grassMinMoisture: 0.2
 --- !u!1 &1861272465
