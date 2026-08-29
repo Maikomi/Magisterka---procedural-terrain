@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEditor;
+using UnityEditor.SceneManagement;
 
 [CustomEditor(typeof(plant_placement))]
 public class plant_placement_editor : Editor
@@ -150,5 +151,102 @@ public class plant_placement_editor : Editor
         Debug.Log("Generated vegetation cleared.");
 
         EditorUtility.SetDirty(placement);
+    }
+}
+
+[InitializeOnLoad]
+public static class plant_placement_play_mode_restore
+{
+    const string RestoreAfterPlayModeKey =
+        "plant_placement_restore_after_play_mode";
+
+    static plant_placement_play_mode_restore()
+    {
+        EditorApplication.playModeStateChanged -= OnPlayModeStateChanged;
+        EditorApplication.playModeStateChanged += OnPlayModeStateChanged;
+    }
+
+    static void OnPlayModeStateChanged(PlayModeStateChange state)
+    {
+        if (state == PlayModeStateChange.ExitingPlayMode)
+        {
+            SessionState.SetBool(
+                RestoreAfterPlayModeKey,
+                HasGeneratedPlantsInPlayMode()
+            );
+        }
+        else if (state == PlayModeStateChange.EnteredEditMode &&
+                 SessionState.GetBool(RestoreAfterPlayModeKey, false))
+        {
+            SessionState.SetBool(RestoreAfterPlayModeKey, false);
+            RestorePlantsFromFinalStatus();
+        }
+    }
+
+    static bool HasGeneratedPlantsInPlayMode()
+    {
+        plant_placement[] placements = Object.FindObjectsByType<plant_placement>(
+            FindObjectsInactive.Include
+        );
+
+        foreach (plant_placement placement in placements)
+        {
+            if (placement != null &&
+                placement.vegetationParent != null &&
+                placement.vegetationParent.childCount > 0)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    static void RestorePlantsFromFinalStatus()
+    {
+        int restoredPlacementCount = 0;
+        plant_placement[] placements = Object.FindObjectsByType<plant_placement>(
+            FindObjectsInactive.Include
+        );
+
+        foreach (plant_placement placement in placements)
+        {
+            if (placement == null || !placement.HasFinalStatusJson())
+            {
+                continue;
+            }
+
+            placement.EnsureVegetationParent();
+            ClearGeneratedPlants(placement.vegetationParent);
+
+            if (placement.PlacePlantsFromFinalStatusJson())
+            {
+                restoredPlacementCount++;
+                EditorUtility.SetDirty(placement);
+                EditorUtility.SetDirty(placement.vegetationParent.gameObject);
+                EditorSceneManager.MarkSceneDirty(placement.gameObject.scene);
+            }
+        }
+
+        if (restoredPlacementCount > 0)
+        {
+            Debug.Log(
+                $"Restored generated plants after Play Mode for " +
+                $"{restoredPlacementCount} placement component(s)."
+            );
+        }
+    }
+
+    static void ClearGeneratedPlants(Transform parent)
+    {
+        if (parent == null)
+        {
+            return;
+        }
+
+        while (parent.childCount > 0)
+        {
+            Object.DestroyImmediate(parent.GetChild(0).gameObject);
+        }
     }
 }
