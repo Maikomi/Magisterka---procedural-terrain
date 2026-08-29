@@ -195,7 +195,9 @@ public class DailySolarExposure : MonoBehaviour
     void SaveExposureMap(Texture2D exposureMap, string fileName)
     {
         byte[] bytes = exposureMap.EncodeToEXR(Texture2D.EXRFlags.OutputAsFloat);
-        File.WriteAllBytes(Application.dataPath + $"/maps/{fileName}.exr", bytes);
+        string outputPath = Application.dataPath + $"/maps/{fileName}.exr";
+        File.WriteAllBytes(outputPath, bytes);
+        map_helper.CopyToRunFolder(outputPath);
     }
 
     float CalculateMaxPossibleLight(int targetDayOfYear)

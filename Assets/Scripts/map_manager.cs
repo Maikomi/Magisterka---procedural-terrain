@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System;
 
+
 public class map_manager : MonoBehaviour
 {
     public Terrain terrain;
@@ -104,6 +105,7 @@ public class map_manager : MonoBehaviour
 
     IEnumerator Start()
     {
+
         yield return null;
         GenerateSelectedMaps();
     }

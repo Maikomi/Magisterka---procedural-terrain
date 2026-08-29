@@ -449,6 +449,7 @@ GameObject:
   - component: {fileID: 1680423285}
   - component: {fileID: 1680423292}
   - component: {fileID: 1680423293}
+  - component: {fileID: 1680423294}
   m_Layer: 0
   m_Name: Manager
   m_TagString: Untagged
@@ -483,6 +484,8 @@ MonoBehaviour:
   terrain: {fileID: 1885919809}
   solarExposureGenerator: {fileID: 1680423287}
   mapAnalysisGenerator: {fileID: 1680423285}
+  mapManager: {fileID: 0}
+  plantAnalysisGenerator: {fileID: 0}
   meta:
     terrainName: 
     terrainResolution: 0
@@ -504,12 +507,25 @@ MonoBehaviour:
     generateAspectColorMap: 0
     generateDailySolarExposure: 0
     generateAnnualSolarExposure: 0
+    generateMoistureMap: 0
+    generatePlantSuitabilityPreviews: 0
     generateDominantSpeciesMap: 0
     generateSeedMap: 0
+    generateGrassMap: 0
+    generateGrassPreview: 0
+    usePoissonDiscSeedDistribution: 0
     seedSuitabilityThreshold: 0
     seedLocalMaximumWindowSize: 0
+    seedDensityPower: 0
     seedProbabilityPower: 0
+    poissonCandidatesPerPoint: 0
+    poissonRadiusMultiplier: 0
+    heightWeight: 0
+    slopeWeight: 0
+    exposureWeight: 0
+    moistureWeight: 0
     plantSpeciesLegend: []
+    executionTimeMs: 0
     generationDate: 
 --- !u!114 &1680423287
 MonoBehaviour:
@@ -545,13 +561,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e38e3b00090efb84dbbcd0ad976131a6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::plant_analysis
+  heightWeight: 1
+  slopeWeight: 1
+  exposureWeight: 1
+  moistureWeight: 1
   seedMapFileName: SeedMap
-  seedSuitabilityThreshold: 0.65
+  seedSuitabilityThreshold: 0.5
   usePoissonDiscSeedDistribution: 1
-  seedLocalMaximumWindowSize: 10
-  seedProbabilityPower: 3
-  poissonCandidatesPerPoint: 30
-  poissonRadiusMultiplier: 1
+  seedLocalMaximumWindowSize: 3
+  seedDensityPower: 1.5
+  poissonCandidatesPerPoint: 40
+  poissonRadiusMultiplier: 0.6
   seedsSaveFileName: SeedMap.json
 --- !u!114 &1680423289
 MonoBehaviour:
@@ -577,7 +597,7 @@ MonoBehaviour:
   generateSlopeMap: 1
   generateAspectMap: 1
   solarExposureGenerator: {fileID: 1680423287}
-  generateMoistureMap: 0
+  generateMoistureMap: 1
   generatePlantSuitabilityPreviews: 1
   generateSeedMap: 1
   seedMapFileName: SeedMap
@@ -597,25 +617,25 @@ MonoBehaviour:
   - plantName: buk
     generateSuitabilityMap: 1
     color: {r: 0.2, g: 0.8, b: 0.2, a: 1}
-    seedRadius: 5
-    maxSeedCountPerSpecies: 400
+    seedRadius: 2
+    maxSeedCountPerSpecies: 550
     growthRate: 1
     maxRadius: 15
-    heightPreference: {x: 0.3, y: 0.9}
-    slopePreference: {x: 0.2, y: 0.7}
-    exposurePreference: {x: 0.2, y: 0.8}
+    heightPreference: {x: 0.3, y: 0.5}
+    slopePreference: {x: 0.2, y: 0.5}
+    exposurePreference: {x: 0.5, y: 0.7}
     moisturePreference: {x: 0.5, y: 1}
     competetivness: 1
     shadePreference: 1
   - plantName: swierk
     generateSuitabilityMap: 1
     color: {r: 0.2, g: 0.4, b: 0.8, a: 1}
-    seedRadius: 3
-    maxSeedCountPerSpecies: 250
+    seedRadius: 1.5
+    maxSeedCountPerSpecies: 300
     growthRate: 1
     maxRadius: 12
-    heightPreference: {x: 0.6, y: 0.8}
-    slopePreference: {x: 0.55, y: 0.65}
+    heightPreference: {x: 0.3, y: 0.8}
+    slopePreference: {x: 0.45, y: 0.85}
     exposurePreference: {x: 0.45, y: 0.5}
     moisturePreference: {x: 0.7, y: 0.85}
     competetivness: 1
@@ -623,8 +643,8 @@ MonoBehaviour:
   - plantName: krzak
     generateSuitabilityMap: 1
     color: {r: 1, g: 0.9, b: 0.2, a: 1}
-    seedRadius: 2
-    maxSeedCountPerSpecies: 300
+    seedRadius: 0.5
+    maxSeedCountPerSpecies: 700
     growthRate: 1
     maxRadius: 7
     heightPreference: {x: 0.45, y: 0.5}
@@ -667,14 +687,11 @@ MonoBehaviour:
     prefab: {fileID: 8185793832496569501, guid: 632cb5ba8e6554c4d895ced6ffb22702, type: 3}
   - speciesName: krzak
     prefab: {fileID: 5503166992987660084, guid: a89bea7274b16dd48b641c1547ee91e1, type: 3}
+  plantCompetition: {fileID: 1680423292}
   terrain: {fileID: 1885919809}
   plantAnalysis: {fileID: 1680423288}
-  plantCompetition: {fileID: 1680423292}
   heightOffset: 0
   vegetationParent: {fileID: 1861272466}
-  scaleModelsByGrowth: 1
-  minimumModelScaleRatio: 0.2
-  randomPlantCount: 2000
 --- !u!114 &1680423292
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -689,7 +706,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::plant_competition
   terrain: {fileID: 1885919809}
   plantAnalysis: {fileID: 1680423288}
-  simulationIterations: 20
+  simulationIterations: 8
   initialEnergy: 1
   competitionEnergyLoss: 0.1
   deathEnergyThreshold: 0.05
@@ -711,9 +728,46 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f10ac8d0b9dbd654aa1e79b41452103d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::grass_analysis
-  grassMaxHeight: 0.5
+  grassMaxHeight: 0.12
   grassMaxSlope: 0.8
   grassMinMoisture: 0.2
+--- !u!114 &1680423294
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1680423284}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ea4194a973644bd41aa2e3cf52c81908, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::grass_placement
+  terrain: {fileID: 1885919809}
+  grassMapFileName: GrassMap.exr
+  grassTexture: {fileID: 2800000, guid: 03f9fe18f0c62284fbb1b3ab854b9c64, type: 3}
+  grassTerrainLayer: {fileID: 8574412962073106934, guid: b7e1bfc87191884488cc6198f40bf838, type: 2}
+  rockTexture: {fileID: 2800000, guid: 80320eaf0437460479475679f18cb135, type: 3}
+  rockTerrainLayer: {fileID: 8574412962073106934, guid: b81b99bea19bf354c81ffb422b038957, type: 2}
+  grassMapThreshold: 0.5
+  grassPrefabs:
+  - {fileID: 775419877193936027, guid: abb51bb2cf0ed594d91fa1394d79d707, type: 3}
+  - {fileID: 790458599940333231, guid: 6d3b2f816fe1f964bb9aac13fbca709a, type: 3}
+  - {fileID: 3046033946734617433, guid: 12eeec3ea7252eb4a8e129da178793c7, type: 3}
+  - {fileID: 3415598882225080983, guid: a493628cc8c9e53408c5d25f0de93347, type: 3}
+  - {fileID: 8228725884049308177, guid: 88120682e7d6d8b44981b69d0e0dace6, type: 3}
+  grassDensity: 0.416
+  grassSpacing: 1
+  maxGrassInstances: 100000
+  randomRotation: 1
+  minimumScale: 0.8
+  maximumScale: 1.2
+  useFixedRandomSeed: 1
+  randomSeed: 12345
+  heightOffset: 0
+  grassParent: {fileID: 1885919810}
+  lastPlacedGrassCount: 0
+  lastEligibleSampleCount: 46544
 --- !u!1 &1861272465
 GameObject:
   m_ObjectHideFlags: 0

@@ -1,5 +1,6 @@
 using UnityEngine;
 using System;
+using System.Diagnostics;
 using System.IO;
 
 public class metadata_json : MonoBehaviour
@@ -49,15 +50,28 @@ public class metadata_json : MonoBehaviour
         public bool generateAspectColorMap;
         public bool generateDailySolarExposure;
         public bool generateAnnualSolarExposure;
+        public bool generateMoistureMap;
+        public bool generatePlantSuitabilityPreviews;
         public bool generateDominantSpeciesMap;
         public bool generateSeedMap;
+        public bool generateGrassMap;
+        public bool generateGrassPreview;
+        public bool usePoissonDiscSeedDistribution;
 
         public float seedSuitabilityThreshold;
         public int seedLocalMaximumWindowSize;
+        public float seedDensityPower;
         public float seedProbabilityPower;
+        public int poissonCandidatesPerPoint;
+        public float poissonRadiusMultiplier;
+        public float heightWeight;
+        public float slopeWeight;
+        public float exposureWeight;
+        public float moistureWeight;
 
         public PlantSpeciesLegend[] plantSpeciesLegend;
 
+        public float executionTimeMs;
         public string generationDate;
     }
 
@@ -65,25 +79,35 @@ public class metadata_json : MonoBehaviour
     //public SaveTerrainMapsPNG terrainMapGenerator;
     public DailySolarExposure solarExposureGenerator;
     public map_analysis mapAnalysisGenerator;
+    public map_manager mapManager;
+    public plant_analysis plantAnalysisGenerator;
 
     public TerrainAnalysisMetadata meta = new TerrainAnalysisMetadata();
 
     void Start()
     {
+        map_helper.EnsureRunFolder();
         OutputJSON();
     }
 
     public void OutputJSON()
     {
+        Stopwatch stopwatch = Stopwatch.StartNew();
+
         FillMetadata();
+
+        stopwatch.Stop();
+        meta.executionTimeMs = (float)stopwatch.Elapsed.TotalMilliseconds;
 
         string mapsPath = Application.dataPath + "/maps";
         Directory.CreateDirectory(mapsPath);
 
         string json = JsonUtility.ToJson(meta, true);
-        File.WriteAllText(mapsPath + "/metadata.json", json);
+        string metadataFilePath = mapsPath + "/metadata.json";
+        File.WriteAllText(metadataFilePath, json);
+        map_helper.CopyToRunFolder(metadataFilePath);
 
-        Debug.Log("Metadata json saved!");
+        UnityEngine.Debug.Log($"Metadata json saved in {meta.executionTimeMs:F2} ms.");
     }
 
     void FillMetadata()
@@ -106,6 +130,16 @@ public class metadata_json : MonoBehaviour
         if (mapAnalysisGenerator == null)
         {
             mapAnalysisGenerator = FindAnyObjectByType<map_analysis>();
+        }
+
+        if (mapManager == null)
+        {
+            mapManager = FindAnyObjectByType<map_manager>();
+        }
+
+        if (plantAnalysisGenerator == null)
+        {
+            plantAnalysisGenerator = FindAnyObjectByType<plant_analysis>();
         }
 
         if (terrain != null)
@@ -138,36 +172,55 @@ public class metadata_json : MonoBehaviour
             meta.generateAnnualSolarExposure = solarExposureGenerator.generateAnnualSolarExposure;
         }
 
-        // if (terrainMapGenerator != null)
-        // {
-        //     meta.generateHeightMap = terrainMapGenerator.generateHeightMap;
-        //     meta.generateSlopeMap = terrainMapGenerator.generateSlopeMap;
-        //     meta.generateAspectMap = terrainMapGenerator.generateAspectMap;
-        //     meta.generateAspectColorMap = terrainMapGenerator.generateAspectColorMap;
-        // }
+        if (mapManager != null)
+        {
+            meta.generateHeightMap = mapManager.generateHeightMap;
+            meta.generateSlopeMap = mapManager.generateSlopeMap;
+            meta.generateAspectMap = mapManager.generateAspectMap;
+            meta.generateMoistureMap = mapManager.generateMoistureMap;
+            meta.generatePlantSuitabilityPreviews = mapManager.generatePlantSuitabilityPreviews;
+            meta.generateDominantSpeciesMap = mapManager.generateDominantSpeciesMap;
+            meta.generateSeedMap = mapManager.generateSeedMap;
+            meta.generateGrassMap = mapManager.generateGrassMap;
+            meta.generateGrassPreview = mapManager.generateGrassPreview;
+        }
 
-        // if (mapAnalysisGenerator != null)
-        // {
-        //     meta.generateDominantSpeciesMap = mapAnalysisGenerator.generateDominantSpeciesMap;
-        //     meta.generateSeedMap = mapAnalysisGenerator.generateSeedMap;
-        //     meta.seedSuitabilityThreshold = mapAnalysisGenerator.seedSuitabilityThreshold;
-        //     meta.seedLocalMaximumWindowSize = mapAnalysisGenerator.seedLocalMaximumWindowSize;
-        //     meta.seedProbabilityPower = mapAnalysisGenerator.seedProbabilityPower;
+        if (plantAnalysisGenerator != null)
+        {
+            meta.seedSuitabilityThreshold = plantAnalysisGenerator.seedSuitabilityThreshold;
+            meta.seedLocalMaximumWindowSize = plantAnalysisGenerator.seedLocalMaximumWindowSize;
+            meta.seedDensityPower = plantAnalysisGenerator.seedDensityPower;
+            meta.seedProbabilityPower = plantAnalysisGenerator.seedDensityPower;
+            meta.usePoissonDiscSeedDistribution = plantAnalysisGenerator.usePoissonDiscSeedDistribution;
+            meta.poissonCandidatesPerPoint = plantAnalysisGenerator.poissonCandidatesPerPoint;
+            meta.poissonRadiusMultiplier = plantAnalysisGenerator.poissonRadiusMultiplier;
+            meta.heightWeight = plantAnalysisGenerator.heightWeight;
+            meta.slopeWeight = plantAnalysisGenerator.slopeWeight;
+            meta.exposureWeight = plantAnalysisGenerator.exposureWeight;
+            meta.moistureWeight = plantAnalysisGenerator.moistureWeight;
+        }
 
-        //     if (mapAnalysisGenerator.plantPreferences != null)
-        //     {
-        //         meta.plantSpeciesLegend = new PlantSpeciesLegend[mapAnalysisGenerator.plantPreferences.Length];
-        //         for (int i = 0; i < mapAnalysisGenerator.plantPreferences.Length; i++)
-        //         {
-        //             PlantPreference plant = mapAnalysisGenerator.plantPreferences[i];
-        //             if (plant != null)
-        //             {
-        //                 string colorHex = ColorUtility.ToHtmlStringRGB(plant.plantColor);
-        //                 meta.plantSpeciesLegend[i] = new PlantSpeciesLegend(plant.plantName, colorHex, i, plant.seedRadius);
-        //             }
-        //         }
-        //     }
-        // }
+        if (mapManager != null && mapManager.species != null)
+        {
+            meta.plantSpeciesLegend = new PlantSpeciesLegend[mapManager.species.Count];
+
+            for (int i = 0; i < mapManager.species.Count; i++)
+            {
+                Species species = mapManager.species[i];
+                if (species == null)
+                {
+                    continue;
+                }
+
+                string colorHex = ColorUtility.ToHtmlStringRGB(species.color);
+                meta.plantSpeciesLegend[i] = new PlantSpeciesLegend(
+                    species.plantName,
+                    colorHex,
+                    i,
+                    species.seedRadius
+                );
+            }
+        }
 
         meta.generationDate = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
     }

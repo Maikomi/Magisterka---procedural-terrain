@@ -54,7 +54,11 @@ public class Species
         float height,
         float slope,
         float exposure,
-        float moisture)
+        float moisture,
+        float heightWeight = 1f,
+        float slopeWeight = 1f,
+        float exposureWeight = 1f,
+        float moistureWeight = 1f)
     {
         float heightSuitability =
             CalculateRangeSuitability(height, heightPreference);
@@ -68,14 +72,20 @@ public class Species
         float moistureSuitability =
             CalculateRangeSuitability(moisture, moisturePreference);
 
-        return Mathf.Clamp01(
-            (
-                heightSuitability
-                + slopeSuitability
-                + exposureSuitability
-                + moistureSuitability
-            ) / 4f
-        );
+        float totalWeight = heightWeight + slopeWeight + exposureWeight + moistureWeight;
+        if (totalWeight <= 0f)
+        {
+            totalWeight = 4f;
+        }
+
+        float weightedSuitability =
+            (heightSuitability * heightWeight
+            + slopeSuitability * slopeWeight
+            + exposureSuitability * exposureWeight
+            + moistureSuitability * moistureWeight)
+            / totalWeight;
+
+        return Mathf.Clamp01(weightedSuitability);
     }
     float CalculateRangeSuitability(float value, Vector2 range)
     {

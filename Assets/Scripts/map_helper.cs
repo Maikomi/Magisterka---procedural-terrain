@@ -6,6 +6,8 @@ using System;
 
 public class map_helper
 {
+    public static string currentRunFolderPath;
+
     public static string GetMapsPath()
     {
         string mapsPath = Application.dataPath + "/maps";
@@ -13,7 +15,57 @@ public class map_helper
         return mapsPath;
     }
 
+    public static string EnsureRunFolder()
+    {
+        string mapsPath = GetMapsPath();
+        string runFolderName = "run_" + DateTime.Now.ToString("yyyyMMdd_HHmmss");
+        currentRunFolderPath = Path.Combine(mapsPath, runFolderName);
+        Directory.CreateDirectory(currentRunFolderPath);
+        RemoveMetaFiles(currentRunFolderPath);
+        return currentRunFolderPath;
+    }
 
+    public static void CopyToRunFolder(string filePath)
+    {
+        if (string.IsNullOrEmpty(filePath) || !File.Exists(filePath))
+        {
+            return;
+        }
+
+        if (string.IsNullOrEmpty(currentRunFolderPath))
+        {
+            EnsureRunFolder();
+        }
+
+        string destinationPath = Path.Combine(currentRunFolderPath, Path.GetFileName(filePath));
+        if (!File.Exists(destinationPath))
+        {
+            File.Copy(filePath, destinationPath, true);
+        }
+
+        RemoveMetaFiles(currentRunFolderPath);
+    }
+
+    public static void RemoveMetaFiles(string directoryPath)
+    {
+        if (string.IsNullOrEmpty(directoryPath) || !Directory.Exists(directoryPath))
+        {
+            return;
+        }
+
+        string[] metaFiles = Directory.GetFiles(directoryPath, "*.meta", SearchOption.AllDirectories);
+        foreach (string metaFile in metaFiles)
+        {
+            try
+            {
+                File.Delete(metaFile);
+            }
+            catch
+            {
+                // Ignore meta file cleanup failures.
+            }
+        }
+    }
 
     public static Texture2D LoadMap(string path)
     {
@@ -62,18 +114,16 @@ public class map_helper
 
     public static void SaveExr(Texture2D map, string fileName)
     {
-        File.WriteAllBytes(
-            Path.Combine(GetMapsPath(), $"{fileName}.exr"),
-            map.EncodeToEXR(Texture2D.EXRFlags.OutputAsFloat)
-        );
+        string outputPath = Path.Combine(GetMapsPath(), $"{fileName}.exr");
+        File.WriteAllBytes(outputPath, map.EncodeToEXR(Texture2D.EXRFlags.OutputAsFloat));
+        CopyToRunFolder(outputPath);
     }
 
     public static void SavePng(Texture2D map, string fileName)
     {
-        File.WriteAllBytes(
-            Path.Combine(GetMapsPath(), $"{fileName}.png"),
-            map.EncodeToPNG()
-        );
+        string outputPath = Path.Combine(GetMapsPath(), $"{fileName}.png");
+        File.WriteAllBytes(outputPath, map.EncodeToPNG());
+        CopyToRunFolder(outputPath);
     }
 
     public static float GetMetersPerPixel(MapInputData inputData)
@@ -91,29 +141,58 @@ public class map_helper
     }
 
 
-    public static void SaveSeedMapPng(Texture2D seedMap, string fileName, MapInputData inputData, List<Species> species, List<Seed> lastGeneratedSeeds)
+    public static void SaveSeedMapPng(
+        Texture2D seedMap,
+        string fileName,
+        MapInputData inputData,
+        List<Species> species,
+        List<Seed> lastGeneratedSeeds,
+        float heightWeight = 1f,
+        float slopeWeight = 1f,
+        float exposureWeight = 1f,
+        float moistureWeight = 1f)
     {
-        Texture2D dominantSpeciesMap = plant_analysis.GenerateDominantSpeciesMapColored(inputData, species);
+        Texture2D dominantSpeciesMap = plant_analysis.GenerateDominantSpeciesMapColored(
+            inputData,
+            species,
+            heightWeight,
+            slopeWeight,
+            exposureWeight,
+            moistureWeight
+        );
         Texture2D overlayMap = new Texture2D(dominantSpeciesMap.width, dominantSpeciesMap.height, TextureFormat.RGBA32, false);
 
         overlayMap.SetPixels(dominantSpeciesMap.GetPixels());
         DrawSeedDots(overlayMap, lastGeneratedSeeds);
         overlayMap.Apply();
 
-        File.WriteAllBytes(
-            Path.Combine(GetMapsPath(), $"{fileName}.png"),
-            overlayMap.EncodeToPNG()
-        );
+        string outputPath = Path.Combine(GetMapsPath(), $"{fileName}.png");
+        File.WriteAllBytes(outputPath, overlayMap.EncodeToPNG());
+        CopyToRunFolder(outputPath);
     }
 
-    static public void SaveDominantSpeciesMapPng(Texture2D grayscaleMap, List<Species> species, string fileName, MapInputData inputData)
+    static public void SaveDominantSpeciesMapPng(
+        Texture2D grayscaleMap,
+        List<Species> species,
+        string fileName,
+        MapInputData inputData,
+        float heightWeight = 1f,
+        float slopeWeight = 1f,
+        float exposureWeight = 1f,
+        float moistureWeight = 1f)
     {
-        Texture2D coloredMap = plant_analysis.GenerateDominantSpeciesMapColored(inputData, species);
-
-        File.WriteAllBytes(
-            Path.Combine(GetMapsPath(), $"{fileName}_colored.png"),
-            coloredMap.EncodeToPNG()
+        Texture2D coloredMap = plant_analysis.GenerateDominantSpeciesMapColored(
+            inputData,
+            species,
+            heightWeight,
+            slopeWeight,
+            exposureWeight,
+            moistureWeight
         );
+
+        string outputPath = Path.Combine(GetMapsPath(), $"{fileName}_colored.png");
+        File.WriteAllBytes(outputPath, coloredMap.EncodeToPNG());
+        CopyToRunFolder(outputPath);
 
     }
 
@@ -188,8 +267,14 @@ public class map_helper
         byte[] pngBytes = pngMap.EncodeToPNG();
         byte[] exrBytes = exrMap.EncodeToEXR(Texture2D.EXRFlags.OutputAsFloat);
 
-        File.WriteAllBytes(Application.dataPath + $"/maps/{fileName}.png", pngBytes);
-        File.WriteAllBytes(Application.dataPath + $"/maps/{fileName}.exr", exrBytes);
+        string pngPath = Application.dataPath + $"/maps/{fileName}.png";
+        string exrPath = Application.dataPath + $"/maps/{fileName}.exr";
+
+        File.WriteAllBytes(pngPath, pngBytes);
+        File.WriteAllBytes(exrPath, exrBytes);
+
+        CopyToRunFolder(pngPath);
+        CopyToRunFolder(exrPath);
     }
 }
 

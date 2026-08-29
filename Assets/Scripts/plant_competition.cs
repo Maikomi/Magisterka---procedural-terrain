@@ -376,6 +376,11 @@ public class plant_competition : MonoBehaviour
 
         SaveCompetitionInteractionsToJson(mapsPath);
         SaveFinalPlantStatusToJson(mapsPath);
+
+        if (!string.IsNullOrEmpty(map_helper.currentRunFolderPath))
+        {
+            map_helper.RemoveMetaFiles(map_helper.currentRunFolderPath);
+        }
     }
 
 
@@ -399,6 +404,7 @@ public class plant_competition : MonoBehaviour
 
         string json = JsonUtility.ToJson(saveFile, true);
         File.WriteAllText(filePath, json);
+        map_helper.CopyToRunFolder(filePath);
 
         if (logSimulation)
         {
@@ -454,6 +460,7 @@ public class plant_competition : MonoBehaviour
 
         string json = JsonUtility.ToJson(saveFile, true);
         File.WriteAllText(filePath, json);
+        map_helper.CopyToRunFolder(filePath);
 
         if (logSimulation)
         {

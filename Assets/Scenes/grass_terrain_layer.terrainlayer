@@ -9,7 +9,7 @@ TerrainLayer:
   m_Name: grass_terrain_layer
   m_DiffuseTexture: {fileID: 2800000, guid: 03f9fe18f0c62284fbb1b3ab854b9c64, type: 3}
   m_NormalMapTexture: {fileID: 2800000, guid: 2b9b807f14b1a1740954e8305a3bcce9, type: 3}
-  m_MaskMapTexture: {fileID: 2800000, guid: a9f87ae60462bad438c202776ecfee8a, type: 3}
+  m_MaskMapTexture: {fileID: 0}
   m_TileSize: {x: 2, y: 2}
   m_TileOffset: {x: 0, y: 0}
   m_Specular: {r: 0, g: 0, b: 0, a: 0}

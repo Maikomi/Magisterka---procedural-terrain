@@ -22,13 +22,35 @@ public class plant_analysis : MonoBehaviour
 {
     [Header("Seed Map")]
 
+    [Header("Suitability Weights")]
+    [Range(0f, 10f)] public float heightWeight = 1f;
+    [Range(0f, 10f)] public float slopeWeight = 1f;
+    [Range(0f, 10f)] public float exposureWeight = 1f;
+    [Range(0f, 10f)] public float moistureWeight = 1f;
+
+    public float GetTotalSuitabilityWeight()
+    {
+        float totalWeight = heightWeight + slopeWeight + exposureWeight + moistureWeight;
+        return totalWeight > 0f ? totalWeight : 4f;
+    }
+
     public string seedMapFileName = "SeedMap";
-    [Range(0f, 1f)] public float seedSuitabilityThreshold = 0.65f;
+
+    [Range(0f, 1f)]
+    public float seedSuitabilityThreshold = 0.40f;
+
     public bool usePoissonDiscSeedDistribution = true;
-    public int seedLocalMaximumWindowSize = 10;
-    public float seedProbabilityPower = 3f;
-    [Min(1)] public int poissonCandidatesPerPoint = 30;
-    [Min(0.01f)] public float poissonRadiusMultiplier = 1f;
+
+    public int seedLocalMaximumWindowSize = 3;
+
+    [Min(0.01f)]
+    public float seedDensityPower = 1.5f;
+
+    [Min(1)]
+    public int poissonCandidatesPerPoint = 40;
+
+    [Min(0.01f)]
+    public float poissonRadiusMultiplier = 0.6f;
     static readonly System.Random SeedRandom = new System.Random();
     public readonly List<Seed> lastGeneratedSeeds = new List<Seed>();
     public string seedsSaveFileName = "SeedMap.json";
@@ -56,7 +78,16 @@ public class plant_analysis : MonoBehaviour
             {
                 if (species[i] != null)
                 {
-                    suitabilities[i] = species[i].CalculateSuitability(height, slope, exposure, moisture);
+                    suitabilities[i] = species[i].CalculateSuitability(
+                        height,
+                        slope,
+                        exposure,
+                        moisture,
+                        heightWeight,
+                        slopeWeight,
+                        exposureWeight,
+                        moistureWeight
+                    );
                 }
                 else
                 {
@@ -88,7 +119,16 @@ public class plant_analysis : MonoBehaviour
         {
             string dominantSpeciesPreviewFileName = dominantSpeciesMapFileName + "_preview";
             map_helper.SavePng(dominantSpeciesMap, dominantSpeciesPreviewFileName);
-            map_helper.SaveDominantSpeciesMapPng(dominantSpeciesMap, species, dominantSpeciesMapFileName, inputData);
+            map_helper.SaveDominantSpeciesMapPng(
+                dominantSpeciesMap,
+                species,
+                dominantSpeciesMapFileName,
+                inputData,
+                heightWeight,
+                slopeWeight,
+                exposureWeight,
+                moistureWeight
+            );
         }
     }
 
@@ -129,6 +169,7 @@ public class plant_analysis : MonoBehaviour
         string json = JsonUtility.ToJson(saveFile, true);
 
         File.WriteAllText(filePath, json);
+        map_helper.CopyToRunFolder(filePath);
 
         Debug.Log(
             $"Saved {saveFile.seeds.Count} seeds to: {filePath}"
@@ -257,7 +298,17 @@ public class plant_analysis : MonoBehaviour
         if (generatePreview)
         {
             string seedMapPreviewFileName = seedMapFileName + "_preview";
-            map_helper.SaveSeedMapPng(seedMap, seedMapPreviewFileName, inputData, species, lastGeneratedSeeds);
+            map_helper.SaveSeedMapPng(
+                seedMap,
+                seedMapPreviewFileName,
+                inputData,
+                species,
+                lastGeneratedSeeds,
+                heightWeight,
+                slopeWeight,
+                exposureWeight,
+                moistureWeight
+            );
         }
 
     }
@@ -286,10 +337,17 @@ public class plant_analysis : MonoBehaviour
         return candidates;
     }
 
-    List<Seed> GeneratePoissonSeedCandidates(MapInputData inputData, List<Species> species)
+    List<Seed> GeneratePoissonSeedCandidates(
+        MapInputData inputData,
+        List<Species> species)
     {
         List<Seed> candidates = new List<Seed>();
-        float poissonRadius = GetPoissonRadiusInPixels(inputData, species);
+
+        float poissonRadius = GetPoissonRadiusInPixels(
+            inputData,
+            species
+        );
+
         List<Vector2> poissonPoints = GeneratePoissonPoints(
             inputData.resolution,
             poissonRadius,
@@ -298,18 +356,59 @@ public class plant_analysis : MonoBehaviour
 
         foreach (Vector2 point in poissonPoints)
         {
-            int x = Mathf.Clamp(Mathf.RoundToInt(point.x), 0, inputData.resolution - 1);
-            int y = Mathf.Clamp(Mathf.RoundToInt(point.y), 0, inputData.resolution - 1);
-            float normX = inputData.resolution > 1 ? (float)x / (inputData.resolution - 1) : 0f;
-            float normY = inputData.resolution > 1 ? (float)y / (inputData.resolution - 1) : 0f;
-            var dominantInfo = GetDominantSpeciesInfo(inputData, species, x, y, normX, normY);
+            int x = Mathf.Clamp(
+                Mathf.RoundToInt(point.x),
+                0,
+                inputData.resolution - 1
+            );
 
-            if (dominantInfo.Item1 == null || dominantInfo.Item2 <= seedSuitabilityThreshold)
+            int y = Mathf.Clamp(
+                Mathf.RoundToInt(point.y),
+                0,
+                inputData.resolution - 1
+            );
+
+            float normX = inputData.resolution > 1
+                ? (float)x / (inputData.resolution - 1)
+                : 0f;
+
+            float normY = inputData.resolution > 1
+                ? (float)y / (inputData.resolution - 1)
+                : 0f;
+
+            // -------------------------------------------------
+            // Każdy gatunek ma własną szansę na seed
+            // -------------------------------------------------
+
+            for (int i = 0; i < species.Count; i++)
             {
-                continue;
-            }
+                Species plant = species[i];
 
-            TryAddSeedCandidate(candidates, dominantInfo.Item1, new Vector2Int(x, y), dominantInfo.Item2);
+                if (plant == null)
+                    continue;
+
+                float suitability = plant.CalculateSuitability(
+                    inputData.GetHeight(x, y, normX, normY),
+                    inputData.GetSlope(normX, normY),
+                    inputData.GetExposure(normX, normY),
+                    inputData.GetMoisture(x, y, normX, normY),
+                    heightWeight,
+                    slopeWeight,
+                    exposureWeight,
+                    moistureWeight
+                );
+
+                // Gatunek nie jest wystarczająco dobrze przystosowany
+                if (suitability < seedSuitabilityThreshold)
+                    continue;
+
+                TryAddSeedCandidate(
+                    candidates,
+                    plant,
+                    new Vector2Int(x, y),
+                    suitability
+                );
+            }
         }
 
         Debug.Log(
@@ -319,14 +418,37 @@ public class plant_analysis : MonoBehaviour
 
         return candidates;
     }
-
-    void TryAddSeedCandidate(List<Seed> candidates, Species species, Vector2Int pixel, float suitability)
+    void TryAddSeedCandidate(
+        List<Seed> candidates,
+        Species species,
+        Vector2Int pixel,
+        float suitability)
     {
-        float probability = Mathf.Pow(suitability, seedProbabilityPower);
+        // Suitability jest nadal miarą przydatności terenu.
+        // Threshold określa minimalną przydatność.
+        //
+        // Dopiero później przekształcamy ją na density.
 
-        if ((float)SeedRandom.NextDouble() < probability)
+        float normalizedSuitability = Mathf.InverseLerp(
+            seedSuitabilityThreshold,
+            1f,
+            suitability
+        );
+
+        float density = Mathf.Pow(
+            normalizedSuitability,
+            seedDensityPower
+        );
+
+        if ((float)SeedRandom.NextDouble() < density)
         {
-            candidates.Add(new Seed(species, pixel, suitability));
+            candidates.Add(
+                new Seed(
+                    species,
+                    pixel,
+                    suitability
+                )
+            );
         }
     }
 
@@ -518,7 +640,16 @@ public class plant_analysis : MonoBehaviour
             float slope = inputData.GetSlope(normX, normY);
             float exposure = inputData.GetExposure(normX, normY);
             float moisture = inputData.GetMoisture(x, y, normX, normY);
-            float suitability = plant.CalculateSuitability(height, slope, exposure, moisture);
+            float suitability = plant.CalculateSuitability(
+                height,
+                slope,
+                exposure,
+                moisture,
+                heightWeight,
+                slopeWeight,
+                exposureWeight,
+                moistureWeight
+            );
 
             map_helper.SetGrayscalePixel(suitabilityMap, x, y, suitability);
         });
@@ -527,7 +658,13 @@ public class plant_analysis : MonoBehaviour
         return suitabilityMap;
     }
 
-    public static Texture2D GenerateDominantSpeciesMap(MapInputData inputData, List<Species> species)
+    public static Texture2D GenerateDominantSpeciesMap(
+        MapInputData inputData,
+        List<Species> species,
+        float heightWeight = 1f,
+        float slopeWeight = 1f,
+        float exposureWeight = 1f,
+        float moistureWeight = 1f)
     {
         if (species == null || species.Count == 0)
         {
@@ -550,7 +687,16 @@ public class plant_analysis : MonoBehaviour
             {
                 if (species[i] != null)
                 {
-                    suitabilities[i] = species[i].CalculateSuitability(height, slope, exposure, moisture);
+                    suitabilities[i] = species[i].CalculateSuitability(
+                        height,
+                        slope,
+                        exposure,
+                        moisture,
+                        heightWeight,
+                        slopeWeight,
+                        exposureWeight,
+                        moistureWeight
+                    );
                 }
                 else
                 {
@@ -580,7 +726,13 @@ public class plant_analysis : MonoBehaviour
         return dominantSpeciesMap;
     }
 
-    public static Texture2D GenerateDominantSpeciesMapColored(MapInputData inputData, List<Species> species)
+    public static Texture2D GenerateDominantSpeciesMapColored(
+        MapInputData inputData,
+        List<Species> species,
+        float heightWeight = 1f,
+        float slopeWeight = 1f,
+        float exposureWeight = 1f,
+        float moistureWeight = 1f)
     {
         if (species == null || species.Count == 0)
         {
@@ -603,7 +755,16 @@ public class plant_analysis : MonoBehaviour
             {
                 if (species[i] != null)
                 {
-                    suitabilities[i] = species[i].CalculateSuitability(height, slope, exposure, moisture);
+                    suitabilities[i] = species[i].CalculateSuitability(
+                        height,
+                        slope,
+                        exposure,
+                        moisture,
+                        heightWeight,
+                        slopeWeight,
+                        exposureWeight,
+                        moistureWeight
+                    );
                 }
                 else
                 {
@@ -659,7 +820,11 @@ public class plant_analysis : MonoBehaviour
                 inputData.GetHeight(x, y, normX, normY),
                 inputData.GetSlope(normX, normY),
                 inputData.GetExposure(normX, normY),
-                inputData.GetMoisture(x, y, normX, normY)
+                inputData.GetMoisture(x, y, normX, normY),
+                heightWeight,
+                slopeWeight,
+                exposureWeight,
+                moistureWeight
             );
 
             if (suitability > maxSuitability)
