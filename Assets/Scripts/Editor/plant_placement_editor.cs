@@ -34,6 +34,11 @@ public class plant_placement_editor : Editor
             PlacePlants(placement);
         }
 
+        if (GUILayout.Button("Place Random Plants", GUILayout.Height(30)))
+        {
+            PlaceRandomPlants(placement);
+        }
+
         if (GUILayout.Button("Clear Plants", GUILayout.Height(30)))
         {
             ClearPlants(placement);
@@ -117,6 +122,32 @@ public class plant_placement_editor : Editor
         }
 
         placement.PlacePlants();
+
+        EditorUtility.SetDirty(placement);
+    }
+
+
+    void PlaceRandomPlants(plant_placement placement)
+    {
+        Debug.Log("Place Random Plants button clicked.");
+
+        if (placement.vegetationParent == null)
+        {
+            GameObject vegetationObject =
+                new GameObject("Generated Vegetation");
+
+            Undo.RegisterCreatedObjectUndo(
+                vegetationObject,
+                "Create Generated Vegetation"
+            );
+
+            placement.vegetationParent =
+                vegetationObject.transform;
+
+            EditorUtility.SetDirty(placement);
+        }
+
+        placement.PlaceRandomPlantsPublic();
 
         EditorUtility.SetDirty(placement);
     }

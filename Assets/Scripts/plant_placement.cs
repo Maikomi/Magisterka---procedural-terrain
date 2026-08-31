@@ -17,7 +17,11 @@ public class plant_placement : MonoBehaviour
     public float heightOffset = 0f;
     public Transform vegetationParent;
 
+    [Header("Random Research Placement")]
+    [Min(1)] public int randomPlantCount = 660;
+
     Dictionary<string, GameObject> prefabDictionary;
+    static readonly System.Random PlacementRandom = new System.Random();
 
     vegetation_performance_profiler performanceProfiler;
 
@@ -85,7 +89,6 @@ public class plant_placement : MonoBehaviour
 
         EnsureVegetationParent();
 
-        performanceProfiler.Clear();
         performanceProfiler.StartStage("Plant Placement");
 
         if (plantCompetition != null && plantCompetition.finalPlants != null && plantCompetition.finalPlants.Count > 0)
@@ -230,9 +233,113 @@ public class plant_placement : MonoBehaviour
         return true;
     }
 
+    public void PlaceRandomPlantsPublic()
+    {
+        map_manager mapManager = GetComponent<map_manager>();
+
+        if (mapManager == null)
+        {
+            Debug.LogError("map_manager is not assigned.");
+            return;
+        }
+
+        //performanceProfiler.StartStage("Random Plant Placement");
+        PlaceRandomPlants(mapManager.species);
+        //performanceProfiler.StopStage();
+        //performanceProfiler.PrintReport();
+    }
+
     public bool HasFinalStatusJson()
     {
         return File.Exists(GetFinalStatusPath());
+    }
+
+    public void PlaceRandomPlants(List<Species> species)
+    {
+        if (prefabDictionary == null || prefabDictionary.Count == 0)
+        {
+            BuildPrefabDictionary();
+        }
+
+        if (terrain == null)
+        {
+            terrain = Terrain.activeTerrain;
+        }
+
+        if (terrain == null)
+        {
+            Debug.LogError("Terrain is not assigned.");
+            return;
+        }
+
+        if (prefabDictionary == null || prefabDictionary.Count == 0)
+        {
+            Debug.LogError("No species prefabs are assigned.");
+            return;
+        }
+
+        List<string> placeableSpecies = GetPlaceableSpeciesNames(species);
+
+        if (placeableSpecies.Count == 0)
+        {
+            Debug.LogError("No random placement species have assigned prefabs.");
+            return;
+        }
+
+        EnsureVegetationParent();
+
+        int placedCount = 0;
+
+        for (int i = 0; i < randomPlantCount; i++)
+        {
+            string speciesName = placeableSpecies[
+                PlacementRandom.Next(placeableSpecies.Count)
+            ];
+
+            if (PlacePlant(speciesName, GetRandomTerrainPixel()))
+            {
+                placedCount++;
+            }
+        }
+
+        Debug.Log(
+            $"Placed {placedCount} completely random plants " +
+            $"without dominant species or competition iterations."
+        );
+    }
+
+    List<string> GetPlaceableSpeciesNames(List<Species> species)
+    {
+        List<string> placeableSpecies = new List<string>();
+
+        if (species == null)
+        {
+            return placeableSpecies;
+        }
+
+        foreach (Species plant in species)
+        {
+            if (plant == null ||
+                string.IsNullOrWhiteSpace(plant.plantName) ||
+                !prefabDictionary.ContainsKey(plant.plantName))
+            {
+                continue;
+            }
+
+            placeableSpecies.Add(plant.plantName);
+        }
+
+        return placeableSpecies;
+    }
+
+    Vector2Int GetRandomTerrainPixel()
+    {
+        int resolution = terrain.terrainData.heightmapResolution;
+
+        return new Vector2Int(
+            PlacementRandom.Next(resolution),
+            PlacementRandom.Next(resolution)
+        );
     }
 
     void PlaceSeeds()

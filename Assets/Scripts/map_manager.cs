@@ -247,7 +247,17 @@ public class map_manager : MonoBehaviour
         }
 
         profiler.PrintReport();
-        profiler.ExportCSVToProject("vegetation_performance.csv");
+
+        // Export performance data to the timestamp folder
+        string runFolderPath = map_helper.currentRunFolderPath;
+        if (!string.IsNullOrEmpty(runFolderPath))
+        {
+            string csvPath = Path.Combine(runFolderPath, "vegetation_performance.csv");
+            string jsonPath = Path.Combine(runFolderPath, "vegetation_performance.json");
+
+            profiler.ExportCSV(csvPath);
+            profiler.ExportJSON(jsonPath);
+        }
     }
 
     MapInputData PrepareInputData()

@@ -1,8 +1,10 @@
 using UnityEngine;
+using UnityEngine.Profiling;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using Unity.Profiling;
 
 #if UNITY_EDITOR
 using UnityEditor;
@@ -16,6 +18,8 @@ public class vegetation_performance_profiler : MonoBehaviour
         public string stageName;
 
         public double timeMs;
+        public double plantsPerSecond;
+        public double averageTimePerPlantMs;
 
         public long managedMemoryBefore;
         public long managedMemoryAfter;
@@ -28,33 +32,160 @@ public class vegetation_performance_profiler : MonoBehaviour
 
         public int placedPlants;
 
-        public int drawCallsBefore;
-        public int drawCallsAfter;
+        // Rendering counters from the most recently completed/rendered frame.
+        // They are intentionally stored as sampled frame statistics, not as
+        // "cost of the algorithm" statistics.
+        public long frameDrawCalls;
+        public long frameTriangles;
+        public long frameVertices;
 
-        public int trianglesBefore;
-        public int trianglesAfter;
-
-        public int verticesBefore;
-        public int verticesAfter;
+        // Scene/vegetation object statistics.
+        public int activeGameObjects;
+        public int activeRenderers;
+        public int meshRenderers;
+        public int skinnedMeshRenderers;
+        public int uniqueMeshes;
+        public int uniqueMaterials;
     }
 
-    List<Measurement> measurements =
-        new List<Measurement>();
+    [Serializable]
+    public class MeasurementData
+    {
+        public string stageName;
 
-    Stopwatch stopwatch;
+        public double timeMs;
+        public int placedPlants;
+        public double averageTimePerPlantMs;
+        public double plantsPerSecond;
 
-    string currentStage;
+        public double managedMemoryBeforeMB;
+        public double managedMemoryAfterMB;
+        public double managedMemoryDeltaMB;
 
-    long currentManagedMemoryBefore;
-    long currentUnityMemoryBefore;
+        public double unityMemoryBeforeMB;
+        public double unityMemoryAfterMB;
+        public double unityMemoryDeltaMB;
+        public double peakUnityMemoryMB;
 
-    long peakUnityMemory;
+        public long frameDrawCalls;
+        public long frameTriangles;
+        public long frameVertices;
 
-    int placedPlants;
+        public int activeGameObjects;
+        public int activeRenderers;
+        public int meshRenderers;
+        public int skinnedMeshRenderers;
+        public int uniqueMeshes;
+        public int uniqueMaterials;
 
-    int drawCallsBefore;
-    int trianglesBefore;
-    int verticesBefore;
+        public double trianglesPerPlant;
+        public double verticesPerPlant;
+        public double memoryDeltaPerPlantMB;
+    }
+
+    [Serializable]
+    public class PerformanceReportData
+    {
+        public List<MeasurementData> measurements = new List<MeasurementData>();
+        public double totalTimeMs;
+        public string generationDate;
+    }
+
+    [Serializable]
+    class SceneRenderingStats
+    {
+        public int activeGameObjects;
+        public int activeRenderers;
+        public int meshRenderers;
+        public int skinnedMeshRenderers;
+        public int uniqueMeshes;
+        public int uniqueMaterials;
+    }
+
+    private readonly List<Measurement> measurements = new List<Measurement>();
+
+    private Stopwatch stopwatch;
+    private string currentStage;
+
+    private long currentManagedMemoryBefore;
+    private long currentUnityMemoryBefore;
+    private long peakUnityMemory;
+
+    private int placedPlants;
+
+    // ProfilerRecorder values are sampled from completed Unity frames.
+    // They are useful for validating rendering cost, but they should not be
+    // interpreted as the CPU time of PlacePlants().
+    private ProfilerRecorder drawCallsRecorder;
+    private ProfilerRecorder trianglesRecorder;
+    private ProfilerRecorder verticesRecorder;
+    private bool renderingRecordersStarted;
+
+    private void OnEnable()
+    {
+        StartRenderingRecorders();
+    }
+
+    private void OnDisable()
+    {
+        StopRenderingRecorders();
+    }
+
+    private void StartRenderingRecorders()
+    {
+        StopRenderingRecorders();
+
+#if UNITY_2020_2_OR_NEWER
+        try
+        {
+            drawCallsRecorder = ProfilerRecorder.StartNew(
+                ProfilerCategory.Render,
+                "Draw Calls Count",
+                1
+            );
+
+            trianglesRecorder = ProfilerRecorder.StartNew(
+                ProfilerCategory.Render,
+                "Triangles Count",
+                1
+            );
+
+            verticesRecorder = ProfilerRecorder.StartNew(
+                ProfilerCategory.Render,
+                "Vertices Count",
+                1
+            );
+
+            renderingRecordersStarted = true;
+        }
+        catch (Exception exception)
+        {
+            renderingRecordersStarted = false;
+
+            UnityEngine.Debug.LogWarning(
+                "[VegetationProfiler] Could not start rendering ProfilerRecorders. " +
+                "Rendering counters will be reported as -1. " +
+                exception.Message
+            );
+        }
+#endif
+    }
+
+    private void StopRenderingRecorders()
+    {
+#if UNITY_2020_2_OR_NEWER
+        if (drawCallsRecorder.Valid)
+            drawCallsRecorder.Dispose();
+
+        if (trianglesRecorder.Valid)
+            trianglesRecorder.Dispose();
+
+        if (verticesRecorder.Valid)
+            verticesRecorder.Dispose();
+#endif
+
+        renderingRecordersStarted = false;
+    }
 
     public void StartStage(string stageName)
     {
@@ -69,22 +200,11 @@ public class vegetation_performance_profiler : MonoBehaviour
 
         currentStage = stageName;
 
-        currentManagedMemoryBefore =
-            GC.GetTotalMemory(false);
-
-        currentUnityMemoryBefore =
-            UnityEngine.Profiling.Profiler.GetTotalAllocatedMemoryLong();
-
-        peakUnityMemory =
-            currentUnityMemoryBefore;
+        currentManagedMemoryBefore = GC.GetTotalMemory(false);
+        currentUnityMemoryBefore = Profiler.GetTotalAllocatedMemoryLong();
+        peakUnityMemory = currentUnityMemoryBefore;
 
         placedPlants = 0;
-
-        GetRenderingStats(
-            out drawCallsBefore,
-            out trianglesBefore,
-            out verticesBefore
-        );
 
         stopwatch = Stopwatch.StartNew();
 
@@ -96,7 +216,6 @@ public class vegetation_performance_profiler : MonoBehaviour
     public void RegisterPlacedPlant()
     {
         placedPlants++;
-
         UpdatePeakMemory();
     }
 
@@ -112,80 +231,55 @@ public class vegetation_performance_profiler : MonoBehaviour
         }
 
         UpdatePeakMemory();
-
         stopwatch.Stop();
 
-        long managedMemoryAfter =
-            GC.GetTotalMemory(false);
-
-        long unityMemoryAfter =
-            UnityEngine.Profiling.Profiler.GetTotalAllocatedMemoryLong();
+        long managedMemoryAfter = GC.GetTotalMemory(false);
+        long unityMemoryAfter = Profiler.GetTotalAllocatedMemoryLong();
 
         if (unityMemoryAfter > peakUnityMemory)
-        {
             peakUnityMemory = unityMemoryAfter;
-        }
 
-        int drawCallsAfter;
-        int trianglesAfter;
-        int verticesAfter;
-
-        GetRenderingStats(
-            out drawCallsAfter,
-            out trianglesAfter,
-            out verticesAfter
+        GetLatestRenderingStats(
+            out long frameDrawCalls,
+            out long frameTriangles,
+            out long frameVertices
         );
+
+        SceneRenderingStats sceneStats = GetSceneRenderingStats();
 
         Measurement measurement = new Measurement();
 
         measurement.stageName = currentStage;
+        measurement.timeMs = stopwatch.Elapsed.TotalMilliseconds;
+        measurement.placedPlants = placedPlants;
 
-        measurement.timeMs =
-            stopwatch.Elapsed.TotalMilliseconds;
+        measurement.averageTimePerPlantMs =
+            GetAverageTimePerPlant(placedPlants, measurement.timeMs);
 
-        measurement.managedMemoryBefore =
-            currentManagedMemoryBefore;
+        measurement.plantsPerSecond =
+            GetPlantsPerSecond(placedPlants, measurement.timeMs);
 
-        measurement.managedMemoryAfter =
-            managedMemoryAfter;
-
+        measurement.managedMemoryBefore = currentManagedMemoryBefore;
+        measurement.managedMemoryAfter = managedMemoryAfter;
         measurement.managedMemoryDelta =
-            managedMemoryAfter -
-            currentManagedMemoryBefore;
+            managedMemoryAfter - currentManagedMemoryBefore;
 
-        measurement.unityMemoryBefore =
-            currentUnityMemoryBefore;
-
-        measurement.unityMemoryAfter =
-            unityMemoryAfter;
-
+        measurement.unityMemoryBefore = currentUnityMemoryBefore;
+        measurement.unityMemoryAfter = unityMemoryAfter;
         measurement.unityMemoryDelta =
-            unityMemoryAfter -
-            currentUnityMemoryBefore;
+            unityMemoryAfter - currentUnityMemoryBefore;
+        measurement.peakUnityMemory = peakUnityMemory;
 
-        measurement.peakUnityMemory =
-            peakUnityMemory;
+        measurement.frameDrawCalls = frameDrawCalls;
+        measurement.frameTriangles = frameTriangles;
+        measurement.frameVertices = frameVertices;
 
-        measurement.placedPlants =
-            placedPlants;
-
-        measurement.drawCallsBefore =
-            drawCallsBefore;
-
-        measurement.drawCallsAfter =
-            drawCallsAfter;
-
-        measurement.trianglesBefore =
-            trianglesBefore;
-
-        measurement.trianglesAfter =
-            trianglesAfter;
-
-        measurement.verticesBefore =
-            verticesBefore;
-
-        measurement.verticesAfter =
-            verticesAfter;
+        measurement.activeGameObjects = sceneStats.activeGameObjects;
+        measurement.activeRenderers = sceneStats.activeRenderers;
+        measurement.meshRenderers = sceneStats.meshRenderers;
+        measurement.skinnedMeshRenderers = sceneStats.skinnedMeshRenderers;
+        measurement.uniqueMeshes = sceneStats.uniqueMeshes;
+        measurement.uniqueMaterials = sceneStats.uniqueMaterials;
 
         measurements.Add(measurement);
 
@@ -193,9 +287,14 @@ public class vegetation_performance_profiler : MonoBehaviour
             $"[VegetationProfiler] END: {currentStage} | " +
             $"Time: {measurement.timeMs:F2} ms | " +
             $"Plants: {measurement.placedPlants} | " +
-            $"Memory: {BytesToMB(measurement.unityMemoryDelta):F2} MB | " +
+            $"Plants/s: {measurement.plantsPerSecond:F2} | " +
+            $"Unity memory delta: {BytesToMB(measurement.unityMemoryDelta):F2} MB | " +
             $"Peak: {BytesToMB(measurement.peakUnityMemory):F2} MB | " +
-            $"Draw Calls: {GetDrawCallDelta(measurement)}"
+            $"Frame Draw Calls: {FormatCounter(measurement.frameDrawCalls)} | " +
+            $"Frame Triangles: {FormatCounter(measurement.frameTriangles)} | " +
+            $"Renderers: {measurement.activeRenderers} | " +
+            $"Unique Meshes: {measurement.uniqueMeshes} | " +
+            $"Unique Materials: {measurement.uniqueMaterials}"
         );
 
         stopwatch = null;
@@ -206,13 +305,10 @@ public class vegetation_performance_profiler : MonoBehaviour
 
     public void UpdatePeakMemory()
     {
-        long currentMemory =
-            UnityEngine.Profiling.Profiler.GetTotalAllocatedMemoryLong();
+        long currentMemory = Profiler.GetTotalAllocatedMemoryLong();
 
         if (currentMemory > peakUnityMemory)
-        {
             peakUnityMemory = currentMemory;
-        }
     }
 
     public List<Measurement> GetMeasurements()
@@ -243,44 +339,24 @@ public class vegetation_performance_profiler : MonoBehaviour
         }
 
         double totalTime = 0;
-
         System.Text.StringBuilder report =
             new System.Text.StringBuilder();
 
         report.AppendLine("");
-        report.AppendLine(
-            "=============================================================="
-        );
-
-        report.AppendLine(
-            "             VEGETATION PERFORMANCE REPORT"
-        );
-
-        report.AppendLine(
-            "=============================================================="
-        );
-
+        report.AppendLine("==============================================================");
+        report.AppendLine("             VEGETATION PERFORMANCE REPORT");
+        report.AppendLine("==============================================================");
         report.AppendLine("");
 
         foreach (Measurement measurement in measurements)
         {
             totalTime += measurement.timeMs;
 
-            report.AppendLine(
-                $"Stage: {measurement.stageName}"
-            );
-
-            report.AppendLine(
-                $"Time: {measurement.timeMs:F2} ms"
-            );
-
-            report.AppendLine(
-                $"Plants placed: {measurement.placedPlants}"
-            );
-
-            report.AppendLine(
-                $"Average time per plant: {GetAverageTimePerPlant(measurement):F4} ms"
-            );
+            report.AppendLine($"Stage: {measurement.stageName}");
+            report.AppendLine($"Time: {measurement.timeMs:F2} ms");
+            report.AppendLine($"Plants placed: {measurement.placedPlants}");
+            report.AppendLine($"Average time per plant: {measurement.averageTimePerPlantMs:F4} ms");
+            report.AppendLine($"Plants per second: {measurement.plantsPerSecond:F2}");
 
             report.AppendLine(
                 $"Managed memory delta: {BytesToMB(measurement.managedMemoryDelta):F2} MB"
@@ -295,51 +371,72 @@ public class vegetation_performance_profiler : MonoBehaviour
             );
 
             report.AppendLine(
-                $"Draw Calls before: {measurement.drawCallsBefore}"
+                $"Frame Draw Calls: {FormatCounter(measurement.frameDrawCalls)}"
             );
 
             report.AppendLine(
-                $"Draw Calls after: {measurement.drawCallsAfter}"
+                $"Frame Triangles: {FormatCounter(measurement.frameTriangles)}"
             );
 
             report.AppendLine(
-                $"Draw Calls delta: {GetDrawCallDelta(measurement)}"
+                $"Frame Vertices: {FormatCounter(measurement.frameVertices)}"
             );
 
             report.AppendLine(
-                $"Triangles delta: {GetTriangleDelta(measurement)}"
+                $"Active GameObjects: {measurement.activeGameObjects}"
             );
 
             report.AppendLine(
-                $"Vertices delta: {GetVertexDelta(measurement)}"
+                $"Active Renderers: {measurement.activeRenderers}"
             );
 
             report.AppendLine(
-                "--------------------------------------------------------------"
+                $"Mesh Renderers: {measurement.meshRenderers}"
             );
+
+            report.AppendLine(
+                $"Skinned Mesh Renderers: {measurement.skinnedMeshRenderers}"
+            );
+
+            report.AppendLine(
+                $"Unique Meshes: {measurement.uniqueMeshes}"
+            );
+
+            report.AppendLine(
+                $"Unique Materials: {measurement.uniqueMaterials}"
+            );
+
+            report.AppendLine(
+                $"Triangles per plant: {GetTrianglesPerPlant(measurement):F2}"
+            );
+
+            report.AppendLine(
+                $"Vertices per plant: {GetVerticesPerPlant(measurement):F2}"
+            );
+
+            report.AppendLine(
+                $"Memory delta per plant: {GetMemoryPerPlantMB(measurement):F4} MB"
+            );
+
+            report.AppendLine("--------------------------------------------------------------");
         }
 
-        report.AppendLine(
-            $"TOTAL TIME: {totalTime:F2} ms"
-        );
-
-        report.AppendLine(
-            "=============================================================="
-        );
+        report.AppendLine($"TOTAL TIME: {totalTime:F2} ms");
+        report.AppendLine("==============================================================");
 
         UnityEngine.Debug.Log(report.ToString());
     }
 
     public void ExportCSV(string filePath)
     {
-        using (StreamWriter writer =
-               new StreamWriter(filePath, false))
+        using (StreamWriter writer = new StreamWriter(filePath, false))
         {
             writer.WriteLine(
                 "Stage," +
                 "Time_ms," +
                 "Plants_Placed," +
                 "Average_Time_Per_Plant_ms," +
+                "Plants_Per_Second," +
                 "ManagedMemoryBefore_MB," +
                 "ManagedMemoryAfter_MB," +
                 "ManagedMemoryDelta_MB," +
@@ -347,24 +444,28 @@ public class vegetation_performance_profiler : MonoBehaviour
                 "UnityMemoryAfter_MB," +
                 "UnityMemoryDelta_MB," +
                 "PeakUnityMemory_MB," +
-                "DrawCallsBefore," +
-                "DrawCallsAfter," +
-                "DrawCallsDelta," +
-                "TrianglesBefore," +
-                "TrianglesAfter," +
-                "TrianglesDelta," +
-                "VerticesBefore," +
-                "VerticesAfter," +
-                "VerticesDelta"
+                "FrameDrawCalls," +
+                "FrameTriangles," +
+                "FrameVertices," +
+                "ActiveGameObjects," +
+                "ActiveRenderers," +
+                "MeshRenderers," +
+                "SkinnedMeshRenderers," +
+                "UniqueMeshes," +
+                "UniqueMaterials," +
+                "TrianglesPerPlant," +
+                "VerticesPerPlant," +
+                "MemoryDeltaPerPlant_MB"
             );
 
             foreach (Measurement measurement in measurements)
             {
                 writer.WriteLine(
-                    $"{measurement.stageName}," +
+                    $"{EscapeCSV(measurement.stageName)}," +
                     $"{measurement.timeMs:F3}," +
                     $"{measurement.placedPlants}," +
-                    $"{GetAverageTimePerPlant(measurement):F4}," +
+                    $"{measurement.averageTimePerPlantMs:F4}," +
+                    $"{measurement.plantsPerSecond:F4}," +
                     $"{BytesToMB(measurement.managedMemoryBefore):F3}," +
                     $"{BytesToMB(measurement.managedMemoryAfter):F3}," +
                     $"{BytesToMB(measurement.managedMemoryDelta):F3}," +
@@ -372,15 +473,18 @@ public class vegetation_performance_profiler : MonoBehaviour
                     $"{BytesToMB(measurement.unityMemoryAfter):F3}," +
                     $"{BytesToMB(measurement.unityMemoryDelta):F3}," +
                     $"{BytesToMB(measurement.peakUnityMemory):F3}," +
-                    $"{measurement.drawCallsBefore}," +
-                    $"{measurement.drawCallsAfter}," +
-                    $"{GetDrawCallDelta(measurement)}," +
-                    $"{measurement.trianglesBefore}," +
-                    $"{measurement.trianglesAfter}," +
-                    $"{GetTriangleDelta(measurement)}," +
-                    $"{measurement.verticesBefore}," +
-                    $"{measurement.verticesAfter}," +
-                    $"{GetVertexDelta(measurement)}"
+                    $"{measurement.frameDrawCalls}," +
+                    $"{measurement.frameTriangles}," +
+                    $"{measurement.frameVertices}," +
+                    $"{measurement.activeGameObjects}," +
+                    $"{measurement.activeRenderers}," +
+                    $"{measurement.meshRenderers}," +
+                    $"{measurement.skinnedMeshRenderers}," +
+                    $"{measurement.uniqueMeshes}," +
+                    $"{measurement.uniqueMaterials}," +
+                    $"{GetTrianglesPerPlant(measurement):F4}," +
+                    $"{GetVerticesPerPlant(measurement):F4}," +
+                    $"{GetMemoryPerPlantMB(measurement):F6}"
                 );
             }
         }
@@ -392,15 +496,13 @@ public class vegetation_performance_profiler : MonoBehaviour
 
     public void ExportCSVToProject(string fileName)
     {
-        string path =
-            Path.Combine(
-                Application.dataPath,
-                "..",
-                fileName
-            );
+        string path = Path.Combine(
+            Application.dataPath,
+            "..",
+            fileName
+        );
 
         path = Path.GetFullPath(path);
-
         ExportCSV(path);
 
 #if UNITY_EDITOR
@@ -408,57 +510,219 @@ public class vegetation_performance_profiler : MonoBehaviour
 #endif
     }
 
-    int GetDrawCallDelta(Measurement measurement)
+    public void ExportJSON(string filePath)
     {
-        return measurement.drawCallsAfter -
-               measurement.drawCallsBefore;
-    }
-
-    int GetTriangleDelta(Measurement measurement)
-    {
-        return measurement.trianglesAfter -
-               measurement.trianglesBefore;
-    }
-
-    int GetVertexDelta(Measurement measurement)
-    {
-        return measurement.verticesAfter -
-               measurement.verticesBefore;
-    }
-
-    double GetAverageTimePerPlant(Measurement measurement)
-    {
-        if (measurement.placedPlants <= 0)
+        if (measurements.Count == 0)
         {
-            return 0;
+            UnityEngine.Debug.LogWarning(
+                "[VegetationProfiler] No measurements available for JSON export."
+            );
+            return;
         }
 
-        return measurement.timeMs /
+        double totalTime = 0;
+        PerformanceReportData reportData = new PerformanceReportData();
+        reportData.generationDate =
+            DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+
+        foreach (Measurement measurement in measurements)
+        {
+            totalTime += measurement.timeMs;
+
+            MeasurementData measurementData = new MeasurementData
+            {
+                stageName = measurement.stageName,
+                timeMs = measurement.timeMs,
+                placedPlants = measurement.placedPlants,
+                averageTimePerPlantMs = measurement.averageTimePerPlantMs,
+                plantsPerSecond = measurement.plantsPerSecond,
+
+                managedMemoryBeforeMB = BytesToMB(measurement.managedMemoryBefore),
+                managedMemoryAfterMB = BytesToMB(measurement.managedMemoryAfter),
+                managedMemoryDeltaMB = BytesToMB(measurement.managedMemoryDelta),
+
+                unityMemoryBeforeMB = BytesToMB(measurement.unityMemoryBefore),
+                unityMemoryAfterMB = BytesToMB(measurement.unityMemoryAfter),
+                unityMemoryDeltaMB = BytesToMB(measurement.unityMemoryDelta),
+                peakUnityMemoryMB = BytesToMB(measurement.peakUnityMemory),
+
+                frameDrawCalls = measurement.frameDrawCalls,
+                frameTriangles = measurement.frameTriangles,
+                frameVertices = measurement.frameVertices,
+
+                activeGameObjects = measurement.activeGameObjects,
+                activeRenderers = measurement.activeRenderers,
+                meshRenderers = measurement.meshRenderers,
+                skinnedMeshRenderers = measurement.skinnedMeshRenderers,
+                uniqueMeshes = measurement.uniqueMeshes,
+                uniqueMaterials = measurement.uniqueMaterials,
+
+                trianglesPerPlant = GetTrianglesPerPlant(measurement),
+                verticesPerPlant = GetVerticesPerPlant(measurement),
+                memoryDeltaPerPlantMB = GetMemoryPerPlantMB(measurement)
+            };
+
+            reportData.measurements.Add(measurementData);
+        }
+
+        reportData.totalTimeMs = totalTime;
+
+        string json = JsonUtility.ToJson(reportData, true);
+        File.WriteAllText(filePath, json);
+
+        UnityEngine.Debug.Log(
+            $"[VegetationProfiler] JSON exported to:\n{filePath}"
+        );
+    }
+
+    private void GetLatestRenderingStats(
+        out long drawCalls,
+        out long triangles,
+        out long vertices)
+    {
+        drawCalls = -1;
+        triangles = -1;
+        vertices = -1;
+
+#if UNITY_2020_2_OR_NEWER
+        if (!renderingRecordersStarted)
+            return;
+
+        drawCalls = GetRecorderValue(drawCallsRecorder);
+        triangles = GetRecorderValue(trianglesRecorder);
+        vertices = GetRecorderValue(verticesRecorder);
+#endif
+    }
+
+    private long GetRecorderValue(ProfilerRecorder recorder)
+    {
+#if UNITY_2020_2_OR_NEWER
+        if (!recorder.Valid || recorder.Count == 0)
+            return -1;
+
+        return recorder.LastValue;
+#else
+        return -1;
+#endif
+    }
+
+    private SceneRenderingStats GetSceneRenderingStats()
+    {
+        SceneRenderingStats stats = new SceneRenderingStats();
+
+        HashSet<Mesh> meshes = new HashSet<Mesh>();
+        HashSet<Material> materials = new HashSet<Material>();
+
+        Renderer[] renderers = FindObjectsOfType<Renderer>(true);
+        stats.activeRenderers = 0;
+
+        HashSet<GameObject> gameObjects = new HashSet<GameObject>();
+
+        foreach (Renderer renderer in renderers)
+        {
+            if (renderer == null || !renderer.gameObject.activeInHierarchy)
+                continue;
+
+            stats.activeRenderers++;
+            gameObjects.Add(renderer.gameObject);
+
+            MeshFilter meshFilter = renderer.GetComponent<MeshFilter>();
+            if (meshFilter != null && meshFilter.sharedMesh != null)
+            {
+                meshes.Add(meshFilter.sharedMesh);
+                stats.meshRenderers++;
+            }
+
+            SkinnedMeshRenderer skinnedRenderer =
+                renderer as SkinnedMeshRenderer;
+
+            if (skinnedRenderer != null)
+            {
+                if (skinnedRenderer.sharedMesh != null)
+                    meshes.Add(skinnedRenderer.sharedMesh);
+
+                stats.skinnedMeshRenderers++;
+            }
+
+            Material[] sharedMaterials = renderer.sharedMaterials;
+            foreach (Material material in sharedMaterials)
+            {
+                if (material != null)
+                    materials.Add(material);
+            }
+        }
+
+        stats.activeGameObjects = gameObjects.Count;
+        stats.uniqueMeshes = meshes.Count;
+        stats.uniqueMaterials = materials.Count;
+
+        return stats;
+    }
+
+    private double GetAverageTimePerPlant(int plantCount, double time)
+    {
+        if (plantCount <= 0)
+            return 0;
+
+        return time / plantCount;
+    }
+
+    private double GetPlantsPerSecond(int plantCount, double timeMs)
+    {
+        if (plantCount <= 0 || timeMs <= 0)
+            return 0;
+
+        return plantCount / (timeMs / 1000.0);
+    }
+
+    private double GetTrianglesPerPlant(Measurement measurement)
+    {
+        if (measurement.placedPlants <= 0 || measurement.frameTriangles < 0)
+            return -1;
+
+        return (double)measurement.frameTriangles /
                measurement.placedPlants;
     }
 
-    double BytesToMB(long bytes)
+    private double GetVerticesPerPlant(Measurement measurement)
     {
-        return bytes /
-               (1024.0 * 1024.0);
+        if (measurement.placedPlants <= 0 || measurement.frameVertices < 0)
+            return -1;
+
+        return (double)measurement.frameVertices /
+               measurement.placedPlants;
     }
 
-    void GetRenderingStats(
-        out int drawCalls,
-        out int triangles,
-        out int vertices)
+    private double GetMemoryPerPlantMB(Measurement measurement)
     {
-        drawCalls = 0;
-        triangles = 0;
-        vertices = 0;
+        if (measurement.placedPlants <= 0)
+            return 0;
 
-#if UNITY_EDITOR
-        if (!Application.isPlaying)
+        return BytesToMB(measurement.unityMemoryDelta) /
+               measurement.placedPlants;
+    }
+
+    private string FormatCounter(long value)
+    {
+        return value < 0 ? "N/A" : value.ToString();
+    }
+
+    private string EscapeCSV(string value)
+    {
+        if (string.IsNullOrEmpty(value))
+            return "";
+
+        if (value.Contains(",") || value.Contains("\"") ||
+            value.Contains("\n") || value.Contains("\r"))
         {
-            drawCalls = UnityStats.drawCalls;
-            triangles = UnityStats.triangles;
-            vertices = UnityStats.vertices;
+            return "\"" + value.Replace("\"", "\"\"") + "\"";
         }
-#endif
+
+        return value;
+    }
+
+    private double BytesToMB(long bytes)
+    {
+        return bytes / (1024.0 * 1024.0);
     }
 }
