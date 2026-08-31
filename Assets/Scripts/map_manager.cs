@@ -127,9 +127,6 @@ public class map_manager : MonoBehaviour
     }
     void GenerateSelectedMaps()
     {
-        // Create timestamp folder at the start for all exports
-        string runFolderPath = map_helper.EnsureRunFolder();
-
         if (generateHeightMap)
         {
             profiler.StartStage("Height Map");
@@ -250,13 +247,7 @@ public class map_manager : MonoBehaviour
         }
 
         profiler.PrintReport();
-
-        // Export performance data to the timestamp folder
-        string csvPath = Path.Combine(runFolderPath, "vegetation_performance.csv");
-        string jsonPath = Path.Combine(runFolderPath, "vegetation_performance.json");
-
-        profiler.ExportCSV(csvPath);
-        profiler.ExportJSON(jsonPath);
+        profiler.ExportCSVToProject("vegetation_performance.csv");
     }
 
     MapInputData PrepareInputData()
