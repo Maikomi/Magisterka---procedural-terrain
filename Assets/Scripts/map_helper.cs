@@ -17,6 +17,12 @@ public class map_helper
 
     public static string EnsureRunFolder()
     {
+        // If a run folder was already created in this session, reuse it
+        if (!string.IsNullOrEmpty(currentRunFolderPath) && Directory.Exists(currentRunFolderPath))
+        {
+            return currentRunFolderPath;
+        }
+
         string mapsPath = GetMapsPath();
         string runFolderName = "run_" + DateTime.Now.ToString("yyyyMMdd_HHmmss");
         currentRunFolderPath = Path.Combine(mapsPath, runFolderName);

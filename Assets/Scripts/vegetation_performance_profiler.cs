@@ -38,6 +38,39 @@ public class vegetation_performance_profiler : MonoBehaviour
         public int verticesAfter;
     }
 
+    [Serializable]
+    public class MeasurementData
+    {
+        public string stageName;
+        public double timeMs;
+        public int placedPlants;
+        public double averageTimePerPlantMs;
+        public double managedMemoryBeforeMB;
+        public double managedMemoryAfterMB;
+        public double managedMemoryDeltaMB;
+        public double unityMemoryBeforeMB;
+        public double unityMemoryAfterMB;
+        public double unityMemoryDeltaMB;
+        public double peakUnityMemoryMB;
+        public int drawCallsBefore;
+        public int drawCallsAfter;
+        public int drawCallsDelta;
+        public int trianglesBefore;
+        public int trianglesAfter;
+        public int trianglesDelta;
+        public int verticesBefore;
+        public int verticesAfter;
+        public int verticesDelta;
+    }
+
+    [Serializable]
+    public class PerformanceReportData
+    {
+        public List<MeasurementData> measurements = new List<MeasurementData>();
+        public double totalTimeMs;
+        public string generationDate;
+    }
+
     List<Measurement> measurements =
         new List<Measurement>();
 
@@ -406,6 +439,61 @@ public class vegetation_performance_profiler : MonoBehaviour
 #if UNITY_EDITOR
         AssetDatabase.Refresh();
 #endif
+    }
+
+    public void ExportJSON(string filePath)
+    {
+        if (measurements.Count == 0)
+        {
+            UnityEngine.Debug.LogWarning(
+                "[VegetationProfiler] No measurements available for JSON export."
+            );
+            return;
+        }
+
+        double totalTime = 0;
+        PerformanceReportData reportData = new PerformanceReportData();
+        reportData.generationDate = System.DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+
+        foreach (Measurement measurement in measurements)
+        {
+            totalTime += measurement.timeMs;
+
+            MeasurementData measurementData = new MeasurementData
+            {
+                stageName = measurement.stageName,
+                timeMs = measurement.timeMs,
+                placedPlants = measurement.placedPlants,
+                averageTimePerPlantMs = GetAverageTimePerPlant(measurement),
+                managedMemoryBeforeMB = BytesToMB(measurement.managedMemoryBefore),
+                managedMemoryAfterMB = BytesToMB(measurement.managedMemoryAfter),
+                managedMemoryDeltaMB = BytesToMB(measurement.managedMemoryDelta),
+                unityMemoryBeforeMB = BytesToMB(measurement.unityMemoryBefore),
+                unityMemoryAfterMB = BytesToMB(measurement.unityMemoryAfter),
+                unityMemoryDeltaMB = BytesToMB(measurement.unityMemoryDelta),
+                peakUnityMemoryMB = BytesToMB(measurement.peakUnityMemory),
+                drawCallsBefore = measurement.drawCallsBefore,
+                drawCallsAfter = measurement.drawCallsAfter,
+                drawCallsDelta = GetDrawCallDelta(measurement),
+                trianglesBefore = measurement.trianglesBefore,
+                trianglesAfter = measurement.trianglesAfter,
+                trianglesDelta = GetTriangleDelta(measurement),
+                verticesBefore = measurement.verticesBefore,
+                verticesAfter = measurement.verticesAfter,
+                verticesDelta = GetVertexDelta(measurement)
+            };
+
+            reportData.measurements.Add(measurementData);
+        }
+
+        reportData.totalTimeMs = totalTime;
+
+        string json = JsonUtility.ToJson(reportData, true);
+        File.WriteAllText(filePath, json);
+
+        UnityEngine.Debug.Log(
+            $"[VegetationProfiler] JSON exported to:\n{filePath}"
+        );
     }
 
     int GetDrawCallDelta(Measurement measurement)

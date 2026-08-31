@@ -85,7 +85,6 @@ public class plant_placement : MonoBehaviour
 
         EnsureVegetationParent();
 
-        performanceProfiler.Clear();
         performanceProfiler.StartStage("Plant Placement");
 
         if (plantCompetition != null && plantCompetition.finalPlants != null && plantCompetition.finalPlants.Count > 0)
