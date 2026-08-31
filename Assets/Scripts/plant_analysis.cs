@@ -18,7 +18,6 @@ public class SeedSaveFile
 {
     public List<SeedSaveData> seeds = new List<SeedSaveData>();
 }
-
 public class plant_analysis : MonoBehaviour
 {
     [Header("Seed Map")]
@@ -63,7 +62,6 @@ public class plant_analysis : MonoBehaviour
 
     public string seedsSaveFileName = "SeedMap.json";
 
-
     // ============================================================
     // DOMINANT SPECIES MAP
     // ============================================================
@@ -76,38 +74,21 @@ public class plant_analysis : MonoBehaviour
     {
         if (species == null || species.Count == 0)
         {
-            Debug.LogWarning(
-                "No plant preferences available for dominant species map generation."
-            );
+            Debug.LogWarning("No plant preferences available for dominant species map generation.");
             return;
         }
 
-        Texture2D dominantSpeciesMap =
-            map_helper.CreateFloatMap(inputData.resolution);
+        Texture2D dominantSpeciesMap = map_helper.CreateFloatMap(inputData.resolution);
 
         map_helper.ForEachPixel(
             inputData.resolution,
             (x, y, normX, normY) =>
             {
-                float height =
-                    inputData.GetHeight(x, y, normX, normY);
-
-                float slope =
-                    inputData.GetSlope(normX, normY);
-
-                float exposure =
-                    inputData.GetExposure(normX, normY);
-
-                float moisture =
-                    inputData.GetMoisture(
-                        x,
-                        y,
-                        normX,
-                        normY
-                    );
-
-                float[] suitabilities =
-                    new float[species.Count];
+                float height = inputData.GetHeight(x, y, normX, normY);
+                float slope = inputData.GetSlope(normX, normY);
+                float exposure = inputData.GetExposure(normX, normY);
+                float moisture = inputData.GetMoisture(x, y, normX, normY);
+                float[] suitabilities = new float[species.Count];
 
                 for (int i = 0; i < species.Count; i++)
                 {
@@ -132,54 +113,29 @@ public class plant_analysis : MonoBehaviour
                 }
 
                 int dominantIndex = 0;
-                float maxSuitability =
-                    suitabilities[0];
+                float maxSuitability = suitabilities[0];
 
-                for (int i = 1;
-                     i < suitabilities.Length;
-                     i++)
+                for (int i = 1; i < suitabilities.Length; i++)
                 {
                     if (suitabilities[i] > maxSuitability)
                     {
-                        maxSuitability =
-                            suitabilities[i];
-
+                        maxSuitability = suitabilities[i];
                         dominantIndex = i;
                     }
                 }
 
-                float speciesValue =
-                    species.Count > 1
-                        ? (float)dominantIndex /
-                          (species.Count - 1)
-                        : 0f;
-
-                map_helper.SetGrayscalePixel(
-                    dominantSpeciesMap,
-                    x,
-                    y,
-                    speciesValue
-                );
+                float speciesValue = species.Count > 1 ? (float)dominantIndex / (species.Count - 1) : 0f;
+                map_helper.SetGrayscalePixel(dominantSpeciesMap, x, y, speciesValue);
             }
         );
 
         dominantSpeciesMap.Apply();
-
-        map_helper.SaveExr(
-            dominantSpeciesMap,
-            dominantSpeciesMapFileName
-        );
+        map_helper.SaveExr(dominantSpeciesMap, dominantSpeciesMapFileName);
 
         if (generatePreview)
         {
-            string dominantSpeciesPreviewFileName =
-                dominantSpeciesMapFileName + "_preview";
-
-            map_helper.SavePng(
-                dominantSpeciesMap,
-                dominantSpeciesPreviewFileName
-            );
-
+            string dominantSpeciesPreviewFileName = dominantSpeciesMapFileName + "_preview";
+            map_helper.SavePng(dominantSpeciesMap, dominantSpeciesPreviewFileName);
             map_helper.SaveDominantSpeciesMapPng(
                 dominantSpeciesMap,
                 species,
@@ -193,20 +149,17 @@ public class plant_analysis : MonoBehaviour
         }
     }
 
-
     // ============================================================
     // SAVE SEEDS
     // ============================================================
 
     public void SaveSeedsToJson()
     {
-        SeedSaveFile saveFile =
-            new SeedSaveFile();
+        SeedSaveFile saveFile = new SeedSaveFile();
 
         foreach (Seed seed in lastGeneratedSeeds)
         {
-            if (seed == null ||
-                seed.species == null)
+            if (seed == null || seed.species == null)
             {
                 continue;
             }
@@ -227,50 +180,28 @@ public class plant_analysis : MonoBehaviour
             saveFile.seeds.Add(seedData);
         }
 
-        string mapsPath =
-            map_helper.GetMapsPath();
+        string mapsPath = map_helper.GetMapsPath();
 
         if (!Directory.Exists(mapsPath))
         {
             Directory.CreateDirectory(mapsPath);
         }
 
-        string filePath =
-            Path.Combine(
-                mapsPath,
-                seedsSaveFileName
-            );
+        string filePath = Path.Combine(mapsPath, seedsSaveFileName);
+        string json = JsonUtility.ToJson(saveFile, true);
+        File.WriteAllText(filePath, json);
+        map_helper.CopyToRunFolder(filePath);
 
-        string json =
-            JsonUtility.ToJson(
-                saveFile,
-                true
-            );
-
-        File.WriteAllText(
-            filePath,
-            json
-        );
-
-        map_helper.CopyToRunFolder(
-            filePath
-        );
-
-        Debug.Log(
-            $"Saved {saveFile.seeds.Count} seeds to: {filePath}"
-        );
+        Debug.Log($"Saved {saveFile.seeds.Count} seeds to: {filePath}");
     }
-
 
     // ============================================================
     // LOAD SEEDS
     // ============================================================
 
-    public bool LoadSeedsFromJson(
-        List<Species> species)
+    public bool LoadSeedsFromJson(List<Species> species)
     {
-        string mapsPath =
-            map_helper.GetMapsPath();
+        string mapsPath = map_helper.GetMapsPath();
 
         string filePath =
             Path.Combine(
@@ -287,28 +218,20 @@ public class plant_analysis : MonoBehaviour
             return false;
         }
 
-        string json =
-            File.ReadAllText(filePath);
+        string json = File.ReadAllText(filePath);
 
-        SeedSaveFile saveFile =
-            JsonUtility.FromJson<SeedSaveFile>(
-                json
-            );
+        SeedSaveFile saveFile = JsonUtility.FromJson<SeedSaveFile>(json);
 
-        if (saveFile == null ||
-            saveFile.seeds == null)
+        if (saveFile == null || saveFile.seeds == null)
         {
-            Debug.LogWarning(
-                "Seed file is empty or invalid."
-            );
+            Debug.LogWarning("Seed file is empty or invalid.");
 
             return false;
         }
 
         lastGeneratedSeeds.Clear();
 
-        foreach (SeedSaveData seedData
-                 in saveFile.seeds)
+        foreach (SeedSaveData seedData in saveFile.seeds)
         {
             Species speciesData =
                 species.Find(
@@ -320,10 +243,7 @@ public class plant_analysis : MonoBehaviour
 
             if (speciesData == null)
             {
-                Debug.LogWarning(
-                    $"Species '{seedData.plantName}' " +
-                    $"was not found. Seed skipped."
-                );
+                Debug.LogWarning($"Species '{seedData.plantName}' " + $"was not found. Seed skipped.");
 
                 continue;
             }
@@ -348,7 +268,6 @@ public class plant_analysis : MonoBehaviour
         return true;
     }
 
-
     // ============================================================
     // GENERATE SEED MAP
     // ============================================================
@@ -359,13 +278,9 @@ public class plant_analysis : MonoBehaviour
         string seedMapFileName,
         bool generatePreview)
     {
-        if (species == null ||
-            species.Count == 0)
+        if (species == null || species.Count == 0)
         {
-            Debug.LogWarning(
-                "No plant preferences available for seed map generation."
-            );
-
+            Debug.LogWarning("No plant preferences available for seed map generation.");
             return;
         }
 
@@ -381,25 +296,6 @@ public class plant_analysis : MonoBehaviour
                     inputData,
                     species
                 );
-
-        // --------------------------------------------------------
-        // NIE SORTUJEMY PO SUITABILITY
-        // --------------------------------------------------------
-        //
-        // Wcześniej kandydaci byli sortowani od najwyższej
-        // suitability do najniższej.
-        //
-        // Powodowało to, że maxSeedCountPerSpecies był
-        // wypełniany prawie wyłącznie przez najlepsze miejsca.
-        //
-        // W efekcie duże obszary o średniej suitability mogły
-        // zostać całkowicie pozbawione seedów.
-        //
-        // Suitability została już wykorzystana wcześniej
-        // jako prawdopodobieństwo zaakceptowania kandydata.
-        //
-        // Teraz losujemy kolejność kandydatów.
-        // --------------------------------------------------------
 
         ShuffleCandidates(candidates);
 
@@ -417,25 +313,18 @@ public class plant_analysis : MonoBehaviour
                 inputData.resolution
             ];
 
-        Dictionary<Species, int> seedsPerSpecies =
-            new Dictionary<Species, int>();
+        Dictionary<Species, int> seedsPerSpecies = new Dictionary<Species, int>();
 
-        for (int i = 0;
-             i < candidates.Count;
-             i++)
+        for (int i = 0; i < candidates.Count; i++)
         {
-            Seed seed =
-                candidates[i];
+            Seed seed = candidates[i];
 
-            if (seed == null ||
-                seed.species == null)
+            if (seed == null || seed.species == null)
             {
                 continue;
             }
 
-            if (!seedsPerSpecies.TryGetValue(
-                    seed.species,
-                    out int speciesSeedCount))
+            if (!seedsPerSpecies.TryGetValue(seed.species, out int speciesSeedCount))
             {
                 speciesSeedCount = 0;
             }
@@ -444,11 +333,8 @@ public class plant_analysis : MonoBehaviour
             // MAX SEED COUNT
             // ----------------------------------------------------
 
-            if (
-                seed.species.maxSeedCountPerSpecies > 0 &&
-                speciesSeedCount >=
-                    seed.species.maxSeedCountPerSpecies
-            )
+            if (seed.species.maxSeedCountPerSpecies > 0 &&
+                speciesSeedCount >= seed.species.maxSeedCountPerSpecies)
             {
                 continue;
             }
@@ -515,7 +401,6 @@ public class plant_analysis : MonoBehaviour
             );
         }
     }
-
 
     // ============================================================
     // SHUFFLE
@@ -741,7 +626,6 @@ public class plant_analysis : MonoBehaviour
 
         return candidates;
     }
-
 
     // ============================================================
     // SUITABILITY -> DENSITY

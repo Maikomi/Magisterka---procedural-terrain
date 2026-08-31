@@ -450,6 +450,7 @@ GameObject:
   - component: {fileID: 1680423292}
   - component: {fileID: 1680423293}
   - component: {fileID: 1680423294}
+  - component: {fileID: 1680423295}
   m_Layer: 0
   m_Name: Manager
   m_TagString: Untagged
@@ -484,8 +485,8 @@ MonoBehaviour:
   terrain: {fileID: 1885919809}
   solarExposureGenerator: {fileID: 1680423287}
   mapAnalysisGenerator: {fileID: 1680423285}
-  mapManager: {fileID: 0}
-  plantAnalysisGenerator: {fileID: 0}
+  mapManager: {fileID: 1680423289}
+  plantAnalysisGenerator: {fileID: 1680423288}
   meta:
     terrainName: 
     terrainResolution: 0
@@ -541,7 +542,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: '::'
   terrain: {fileID: 1885919809}
   generateDailySolarExposure: 0
-  generateAnnualSolarExposure: 1
+  generateAnnualSolarExposure: 0
   latitude: 45
   dayOfYear: 180
   hourStart: 5
@@ -566,12 +567,12 @@ MonoBehaviour:
   exposureWeight: 1
   moistureWeight: 1
   seedMapFileName: SeedMap
-  seedSuitabilityThreshold: 0.5
+  seedSuitabilityThreshold: 0.3
   usePoissonDiscSeedDistribution: 1
   seedLocalMaximumWindowSize: 3
-  seedDensityPower: 1.5
-  poissonCandidatesPerPoint: 40
-  poissonRadiusMultiplier: 0.6
+  seedDensityPower: 2
+  poissonCandidatesPerPoint: 20
+  poissonRadiusMultiplier: 2
   seedsSaveFileName: SeedMap.json
 --- !u!114 &1680423289
 MonoBehaviour:
@@ -593,9 +594,9 @@ MonoBehaviour:
   plantCompetition: {fileID: 1680423292}
   solar_exposure: {fileID: 1680423287}
   placePlants: 1
-  generateHeightMap: 1
-  generateSlopeMap: 1
-  generateAspectMap: 1
+  generateHeightMap: 0
+  generateSlopeMap: 0
+  generateAspectMap: 0
   solarExposureGenerator: {fileID: 1680423287}
   generateMoistureMap: 1
   generatePlantSuitabilityPreviews: 1
@@ -708,7 +709,7 @@ MonoBehaviour:
   plantAnalysis: {fileID: 1680423288}
   simulationIterations: 8
   initialEnergy: 1
-  competitionEnergyLoss: 0.1
+  competitionEnergyLoss: 0.2
   deathEnergyThreshold: 0.05
   lowEnergyGrowthMultiplier: 0.25
   competitionGrowthSlowdown: 0.5
@@ -761,13 +762,25 @@ MonoBehaviour:
   maxGrassInstances: 100000
   randomRotation: 1
   minimumScale: 0.8
-  maximumScale: 1.2
+  maximumScale: 1.8
   useFixedRandomSeed: 1
   randomSeed: 12345
   heightOffset: 0
   grassParent: {fileID: 1885919810}
   lastPlacedGrassCount: 0
   lastEligibleSampleCount: 46544
+--- !u!114 &1680423295
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1680423284}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e57420b4b65cb5a42a5a0eef06da8a74, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::vegetation_performance_profiler
 --- !u!1 &1861272465
 GameObject:
   m_ObjectHideFlags: 0

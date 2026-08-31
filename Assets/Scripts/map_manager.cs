@@ -8,7 +8,7 @@ using System;
 public class map_manager : MonoBehaviour
 {
     public Terrain terrain;
-
+    private vegetation_performance_profiler profiler;
     public map_analysis mapAnalysis;
     public plant_analysis plantAnalysis;
     public grass_analysis grassAnalysis;
@@ -101,11 +101,16 @@ public class map_manager : MonoBehaviour
         {
             solar_exposure = FindAnyObjectByType<DailySolarExposure>();
         }
+        profiler = GetComponent<vegetation_performance_profiler>();
+
+        if (profiler == null)
+        {
+            profiler = gameObject.AddComponent<vegetation_performance_profiler>();
+        }
     }
 
     IEnumerator Start()
     {
-
         yield return null;
         GenerateSelectedMaps();
     }
@@ -124,22 +129,34 @@ public class map_manager : MonoBehaviour
     {
         if (generateHeightMap)
         {
+            profiler.StartStage("Height Map");
             mapAnalysis.GenerateHeightMap(terrain.terrainData, Path.GetFileNameWithoutExtension(heightMapFileName));
+            profiler.StopStage();
         }
         if (generateSlopeMap)
         {
+            profiler.StartStage("Slope Map");
             mapAnalysis.GenerateSlopeMap(terrain.terrainData, Path.GetFileNameWithoutExtension(slopeMapFileName));
+            profiler.StopStage();
         }
         if (generateAspectMap)
         {
+            profiler.StartStage("Aspect Map");
             mapAnalysis.GenerateAspectMap(terrain.terrainData, Path.GetFileNameWithoutExtension(aspectMapFileName));
+            profiler.StopStage();
         }
         if (generateMoistureMap)
         {
             MapInputData inputData = PrepareInputData();
             if (inputData.IsValid)
             {
+                Debug.Log($"mapAnalysis = {mapAnalysis}");
+                Debug.Log($"solar_exposure = {solar_exposure}");
+                Debug.Log($"solarExposureGenerator = {solarExposureGenerator}");
+                Debug.Log($"terrain = {terrain}");
+                profiler.StartStage("Moisture Map");
                 mapAnalysis.GenerateMoistureMap(inputData, moistureMapFileName, generateMoisturePreview);
+                profiler.StopStage();
             }
         }
 
@@ -158,11 +175,13 @@ public class map_manager : MonoBehaviour
                     return;
                 }
 
+                profiler.StartStage("Grass Map");
                 grassAnalysis.GenerateGrassMap(
                     inputData,
                     grassMapFileName,
                     generateGrassPreview
                 );
+                profiler.StopStage();
             }
         }
 
@@ -171,7 +190,9 @@ public class map_manager : MonoBehaviour
             MapInputData inputData = PrepareInputData();
             if (inputData.IsValid)
             {
+                profiler.StartStage("Plant Suitability Previews");
                 plantAnalysis.GeneratePlantSuitabilityMaps(inputData, species, generatePlantSuitabilityPreviews);
+                profiler.StopStage();
             }
         }
         if (generateSeedMap)
@@ -179,7 +200,9 @@ public class map_manager : MonoBehaviour
             MapInputData inputData = PrepareInputData();
             if (inputData.IsValid)
             {
+                profiler.StartStage("Seed Map");
                 plantAnalysis.GenerateSeedMap(inputData, species, seedMapFileName, generateSeedMap);
+                profiler.StopStage();
             }
         }
         if (generateDominantSpeciesMap)
@@ -187,7 +210,9 @@ public class map_manager : MonoBehaviour
             MapInputData inputData = PrepareInputData();
             if (inputData.IsValid)
             {
+                profiler.StartStage("Dominant Species Map");
                 plantAnalysis.GenerateDominantSpeciesMap(inputData, species, dominantSpeciesMapFileName, generateDominantSpeciesMap);
+                profiler.StopStage();
             }
         }
         if (placePlants)
@@ -220,6 +245,9 @@ public class map_manager : MonoBehaviour
 
             plantPlacement.PlacePlants();
         }
+
+        profiler.PrintReport();
+        profiler.ExportCSVToProject("vegetation_performance.csv");
     }
 
     MapInputData PrepareInputData()

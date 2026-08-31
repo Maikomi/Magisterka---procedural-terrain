@@ -19,9 +19,12 @@ public class plant_placement : MonoBehaviour
 
     Dictionary<string, GameObject> prefabDictionary;
 
+    vegetation_performance_profiler performanceProfiler;
+
     void Awake()
     {
         BuildPrefabDictionary();
+        EnsurePerformanceProfiler();
     }
 
     void OnValidate()
@@ -50,6 +53,7 @@ public class plant_placement : MonoBehaviour
     public void PlacePlants()
     {
         Debug.Log("plant_placement.PlacePlants() started.");
+        EnsurePerformanceProfiler();
 
         if (prefabDictionary == null || prefabDictionary.Count == 0)
         {
@@ -81,19 +85,28 @@ public class plant_placement : MonoBehaviour
 
         EnsureVegetationParent();
 
-        if (plantCompetition != null && plantCompetition.finalPlants.Count > 0)
+        performanceProfiler.Clear();
+        performanceProfiler.StartStage("Plant Placement");
+
+        if (plantCompetition != null && plantCompetition.finalPlants != null && plantCompetition.finalPlants.Count > 0)
         {
             PlaceCompetitionPlants();
+
+            FinishPerformanceMeasurement();
             return;
         }
 
         if (PlacePlantsFromFinalStatusJson())
         {
+            FinishPerformanceMeasurement();
             return;
         }
 
         if (prefabDictionary == null || prefabDictionary.Count == 0)
         {
+            performanceProfiler.StopStage();
+            performanceProfiler.PrintReport();
+
             Debug.LogError("No species prefabs are assigned.");
             return;
         }
@@ -102,11 +115,39 @@ public class plant_placement : MonoBehaviour
 
         if (seeds == null || seeds.Count == 0)
         {
+            performanceProfiler.StopStage();
+            performanceProfiler.PrintReport();
+
             Debug.LogWarning("No seeds available. Generate Seed Map first.");
             return;
         }
 
         PlaceSeeds();
+
+        FinishPerformanceMeasurement();
+    }
+
+    void EnsurePerformanceProfiler()
+    {
+        if (performanceProfiler == null)
+        {
+            performanceProfiler = GetComponent<vegetation_performance_profiler>();
+
+            if (performanceProfiler == null)
+            {
+                performanceProfiler = gameObject.AddComponent<vegetation_performance_profiler>();
+            }
+        }
+    }
+
+    void FinishPerformanceMeasurement()
+    {
+        performanceProfiler.StopStage();
+        performanceProfiler.PrintReport();
+
+        performanceProfiler.ExportCSVToProject(
+            "vegetation_performance.csv"
+        );
     }
 
     public void EnsureVegetationParent()
@@ -233,12 +274,20 @@ public class plant_placement : MonoBehaviour
             {
                 plantObject.transform.SetPositionAndRotation(worldPosition, Quaternion.identity);
                 UnityEditor.Undo.RegisterCreatedObjectUndo(plantObject, "Place Plant");
+                if (performanceProfiler != null)
+                {
+                    performanceProfiler.RegisterPlacedPlant();
+                }
+
                 return true;
             }
         }
 #endif
 
         Instantiate(plantPrefab, worldPosition, Quaternion.identity, vegetationParent);
+
+        performanceProfiler.RegisterPlacedPlant();
+
         return true;
     }
 
