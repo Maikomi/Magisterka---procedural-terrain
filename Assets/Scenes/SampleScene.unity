@@ -542,13 +542,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: '::'
   terrain: {fileID: 1885919809}
   generateDailySolarExposure: 0
-  generateAnnualSolarExposure: 0
+  generateAnnualSolarExposure: 1
   latitude: 45
   dayOfYear: 180
   hourStart: 5
   hourEnd: 21
   hourStep: 2
-  annualSamples: 10
+  annualSamples: 12
   maxDistanceSamples: 32
 --- !u!114 &1680423288
 MonoBehaviour:
@@ -619,7 +619,7 @@ MonoBehaviour:
     generateSuitabilityMap: 1
     color: {r: 0.2, g: 0.8, b: 0.2, a: 1}
     seedRadius: 2
-    maxSeedCountPerSpecies: 550
+    maxSeedCountPerSpecies: 750
     growthRate: 1
     maxRadius: 15
     heightPreference: {x: 0, y: 0.3}
@@ -632,7 +632,7 @@ MonoBehaviour:
     generateSuitabilityMap: 1
     color: {r: 0.2, g: 0.4, b: 0.8, a: 1}
     seedRadius: 1.5
-    maxSeedCountPerSpecies: 300
+    maxSeedCountPerSpecies: 400
     growthRate: 1
     maxRadius: 12
     heightPreference: {x: 0.5, y: 0.65}
@@ -645,7 +645,7 @@ MonoBehaviour:
     generateSuitabilityMap: 1
     color: {r: 1, g: 0.9, b: 0.2, a: 1}
     seedRadius: 0.5
-    maxSeedCountPerSpecies: 700
+    maxSeedCountPerSpecies: 850
     growthRate: 1
     maxRadius: 7
     heightPreference: {x: 0.45, y: 0.5}
@@ -693,6 +693,7 @@ MonoBehaviour:
   plantAnalysis: {fileID: 1680423288}
   heightOffset: 0
   vegetationParent: {fileID: 1861272466}
+  randomPlantCount: 1000
 --- !u!114 &1680423292
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -707,7 +708,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::plant_competition
   terrain: {fileID: 1885919809}
   plantAnalysis: {fileID: 1680423288}
-  simulationIterations: 8
+  simulationIterations: 7
   initialEnergy: 1
   competitionEnergyLoss: 0.2
   deathEnergyThreshold: 0.05

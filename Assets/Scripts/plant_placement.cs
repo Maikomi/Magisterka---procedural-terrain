@@ -236,17 +236,21 @@ public class plant_placement : MonoBehaviour
     public void PlaceRandomPlantsPublic()
     {
         map_manager mapManager = GetComponent<map_manager>();
-
+        if (performanceProfiler == null)
+        {
+            EnsurePerformanceProfiler();
+        }
         if (mapManager == null)
         {
             Debug.LogError("map_manager is not assigned.");
             return;
         }
 
-        //performanceProfiler.StartStage("Random Plant Placement");
+        performanceProfiler.StartStage("Random Plant Placement");
         PlaceRandomPlants(mapManager.species);
-        //performanceProfiler.StopStage();
-        //performanceProfiler.PrintReport();
+        performanceProfiler.StopStage();
+        performanceProfiler.PrintReport();
+        performanceProfiler.ExportJSON("./Assets/maps/random_vegetation_performance.json");
     }
 
     public bool HasFinalStatusJson()
