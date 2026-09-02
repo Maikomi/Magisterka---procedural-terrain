@@ -1,2 +1,2 @@
-"# Magisterka---procedural-terrain" 
-"# Magisterka---procedural-terrain" 
+"# Magisterka---rule-based_vegetation_distribution" 
+
